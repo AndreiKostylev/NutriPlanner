@@ -1,0 +1,37 @@
+﻿<UserControl x:Class="NutriPlanner.Views.ProductsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Background="White">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+      
+        <DataGrid Grid.Row="0" AutoGenerateColumns="False"
+                  ItemsSource="{Binding Products}"
+                  SelectedItem="{Binding SelectedProduct}" 
+                  CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Название" Binding="{Binding ProductName}" Width="*"/>
+                <DataGridTextColumn Header="Категория" Binding="{Binding Category}" Width="100"/>
+                <DataGridTextColumn Header="Калории" Binding="{Binding Calories}" Width="70"/>
+                <DataGridTextColumn Header="Белки" Binding="{Binding Protein}" Width="70"/>
+                <DataGridTextColumn Header="Жиры" Binding="{Binding Fat}" Width="70"/>
+                <DataGridTextColumn Header="Углеводы" Binding="{Binding Carbohydrates}" Width="70"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+ 
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,10,0,0">
+            <Button Content="Добавить" Command="{Binding AddCommand}" Margin="5,0"/>
+            <Button Content="Сохранить" Command="{Binding SaveCommand}" Margin="5,0"/>
+            <Button Content="Удалить" Command="{Binding DeleteCommand}" Margin="5,0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

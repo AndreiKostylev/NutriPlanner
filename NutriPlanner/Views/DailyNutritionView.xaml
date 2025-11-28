@@ -1,0 +1,46 @@
+﻿<UserControl x:Class="NutriPlanner.Views.DailyNutritionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:NutriPlanner.Views"
+             mc:Ignorable="d"
+             Background="White">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+      
+        <TextBlock Text="Дневник питания"
+                   FontSize="20" FontWeight="Bold"
+                   Margin="0,0,0,10"/>
+
+        
+        <DataGrid Grid.Row="1" AutoGenerateColumns="False"
+                  ItemsSource="{Binding NutritionData.Meals}"
+                  CanUserAddRows="False"
+                  IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Название" Binding="{Binding MealName}" Width="*"/>
+                <DataGridTextColumn Header="Калории" Binding="{Binding Calories}"/>
+                <DataGridTextColumn Header="Белки" Binding="{Binding Protein}"/>
+                <DataGridTextColumn Header="Жиры" Binding="{Binding Fat}"/>
+                <DataGridTextColumn Header="Углеводы" Binding="{Binding Carbs}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+       
+        <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
+            <ComboBox Width="200" ItemsSource="{Binding AvailableProducts}"
+                      SelectedItem="{Binding SelectedProduct}" DisplayMemberPath="ProductName"/>
+            <TextBox Width="50" Margin="5,0" Text="{Binding ProductQuantity}" />
+            <Button Content="Добавить" Command="{Binding AddProductCommand}" Margin="5,0"/>
+            <Button Content="Очистить" Command="{Binding ClearDataCommand}" Margin="5,0"/>
+            <Button Content="Сохранить" Command="{Binding SaveToDatabaseCommand}" Margin="5,0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
