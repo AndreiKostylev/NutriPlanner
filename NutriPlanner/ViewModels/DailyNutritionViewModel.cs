@@ -24,6 +24,14 @@ namespace NutriPlanner.ViewModels
         private ProductDto _selectedProduct;
         private decimal _productQuantity = 100;
 
+        // Поля для расчета норм
+        private int _userAge = 30;
+        private string _userGender = "Мужской";
+        private decimal _userHeight = 180;
+        private decimal _userWeight = 75;
+        private string _activityLevel = "Умеренная";
+        private string _goal = "Поддержание";
+
         public DailyNutritionDto NutritionData
         {
             get => _nutritionData;
@@ -47,6 +55,60 @@ namespace NutriPlanner.ViewModels
             get => _productQuantity;
             set { _productQuantity = value; OnPropertyChanged(); }
         }
+
+        // Свойства для ввода данных пользователя
+        public int UserAge
+        {
+            get => _userAge;
+            set { _userAge = value; OnPropertyChanged(); }
+        }
+
+        public string UserGender
+        {
+            get => _userGender;
+            set { _userGender = value; OnPropertyChanged(); }
+        }
+
+        public decimal UserHeight
+        {
+            get => _userHeight;
+            set { _userHeight = value; OnPropertyChanged(); }
+        }
+
+        public decimal UserWeight
+        {
+            get => _userWeight;
+            set { _userWeight = value; OnPropertyChanged(); }
+        }
+
+        public string ActivityLevel
+        {
+            get => _activityLevel;
+            set { _activityLevel = value; OnPropertyChanged(); }
+        }
+
+        public string Goal
+        {
+            get => _goal;
+            set { _goal = value; OnPropertyChanged(); }
+        }
+
+        // Списки для ComboBox
+        public List<string> Genders { get; } = new List<string> { "Мужской", "Женский" };
+        public List<string> ActivityLevels { get; } = new List<string>
+        {
+            "Сидячий",
+            "Легкая",
+            "Умеренная",
+            "Активная",
+            "Очень активная"
+        };
+        public List<string> Goals { get; } = new List<string>
+        {
+            "Похудение",
+            "Поддержание",
+            "Набор массы"
+        };
 
         // Команды
         public ICommand AddProductCommand { get; }
@@ -78,7 +140,7 @@ namespace NutriPlanner.ViewModels
             try
             {
                 await LoadProductsFromDatabase();
-                InitializeTargets();
+                CalculateTargets(); // Рассчитываем целевые показатели при запуске
                 _mainViewModel.UpdateStatus("Данные загружены успешно");
             }
             catch (Exception ex)
@@ -115,14 +177,108 @@ namespace NutriPlanner.ViewModels
         }
 
         /// <summary>
-        /// Инициализирует целевые показатели
+        /// Рассчитывает целевые показатели по формуле Миффлина-Сан Жеора
         /// </summary>
-        private void InitializeTargets()
+        private void CalculateTargets()
         {
-            NutritionData.TargetCalories = 2000;
-            NutritionData.TargetProtein = 150;
-            NutritionData.TargetFat = 67;
-            NutritionData.TargetCarbs = 250;
+            try
+            {
+               
+                if (UserAge <= 0 || UserHeight <= 0 || UserWeight <= 0)
+                {
+                    _mainViewModel.UpdateStatus("Ошибка: Проверьте возраст, рост и вес");
+                    return;
+                }
+
+              
+                decimal bmr;
+                if (UserGender == "Мужской")
+                {
+                    bmr = 10 * UserWeight + 6.25m * UserHeight - 5 * UserAge + 5;
+                }
+                else
+                {
+                    bmr = 10 * UserWeight + 6.25m * UserHeight - 5 * UserAge - 161;
+                }
+
+               
+                decimal activityMultiplier = GetActivityMultiplier(ActivityLevel);
+
+            
+                decimal tdee = bmr * activityMultiplier;
+
+              
+                decimal goalMultiplier = GetGoalMultiplier(Goal);
+                decimal targetCalories = tdee * goalMultiplier;
+
+               
+                decimal targetProtein = targetCalories * 0.3m / 4; 
+                decimal targetFat = targetCalories * 0.25m / 9;     
+                decimal targetCarbs = targetCalories * 0.45m / 4;  
+
+              
+                NutritionData.TargetCalories = Math.Round(targetCalories, 2);
+                NutritionData.TargetProtein = Math.Round(targetProtein, 2);
+                NutritionData.TargetFat = Math.Round(targetFat, 2);
+                NutritionData.TargetCarbs = Math.Round(targetCarbs, 2);
+
+               
+                UpdateProgress();
+
+                _mainViewModel.UpdateStatus($"Расчет выполнен: {NutritionData.TargetCalories} ккал/день");
+            }
+            catch (Exception ex)
+            {
+                _mainViewModel.UpdateStatus($"Ошибка расчета: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Возвращает коэффициент физической активности
+        /// </summary>
+        private decimal GetActivityMultiplier(string activityLevel)
+        {
+            return activityLevel switch
+            {
+                "Сидячий" => 1.2m,
+                "Легкая" => 1.375m,
+                "Умеренная" => 1.55m,
+                "Активная" => 1.725m,
+                "Очень активная" => 1.9m,
+                _ => 1.2m
+            };
+        }
+
+        /// <summary>
+        /// Возвращает коэффициент цели
+        /// </summary>
+        private decimal GetGoalMultiplier(string goal)
+        {
+            return goal switch
+            {
+                "Похудение" => 0.8m,
+                "Поддержание" => 1.0m,
+                "Набор массы" => 1.2m,
+                _ => 1.0m
+            };
+        }
+
+        /// <summary>
+        /// Обновляет прогресс выполнения дневных целей
+        /// </summary>
+        private void UpdateProgress()
+        {
+            if (NutritionData.TargetCalories > 0)
+                NutritionData.CaloriesProgress = Math.Round((NutritionData.TotalCalories / NutritionData.TargetCalories) * 100, 1);
+
+            if (NutritionData.TargetProtein > 0)
+                NutritionData.ProteinProgress = Math.Round((NutritionData.TotalProtein / NutritionData.TargetProtein) * 100, 1);
+
+            if (NutritionData.TargetFat > 0)
+                NutritionData.FatProgress = Math.Round((NutritionData.TotalFat / NutritionData.TargetFat) * 100, 1);
+
+            if (NutritionData.TargetCarbs > 0)
+                NutritionData.CarbsProgress = Math.Round((NutritionData.TotalCarbs / NutritionData.TargetCarbs) * 100, 1);
         }
 
         /// <summary>
@@ -136,13 +292,13 @@ namespace NutriPlanner.ViewModels
             {
                 var (calories, protein, fat, carbs) = CalculateNutrition(SelectedProduct, ProductQuantity);
 
-                // Обновляем общие показатели
+                
                 NutritionData.TotalCalories += calories;
                 NutritionData.TotalProtein += protein;
                 NutritionData.TotalFat += fat;
                 NutritionData.TotalCarbs += carbs;
 
-                // Добавляем запись в список приемов пищи
+
                 NutritionData.Meals.Add(new MealDto
                 {
                     MealName = $"{SelectedProduct.ProductName} ({ProductQuantity}г)",
@@ -151,6 +307,9 @@ namespace NutriPlanner.ViewModels
                     Fat = fat,
                     Carbs = carbs
                 });
+
+                // Обновляем прогресс
+                UpdateProgress();
 
                 OnPropertyChanged(nameof(NutritionData));
                 _mainViewModel.UpdateStatus($"Добавлен: {SelectedProduct.ProductName}");
@@ -162,7 +321,7 @@ namespace NutriPlanner.ViewModels
         }
 
         /// <summary>
-        /// Рассчитывает пищевую ценность продукта (Паттерн Strategy)
+        /// Рассчитывает пищевую ценность продукта
         /// </summary>
         private (decimal calories, decimal protein, decimal fat, decimal carbs) CalculateNutrition(ProductDto product, decimal quantity)
         {
@@ -194,7 +353,7 @@ namespace NutriPlanner.ViewModels
                     Protein = NutritionData.TotalProtein,
                     Fat = NutritionData.TotalFat,
                     Carbohydrates = NutritionData.TotalCarbs,
-                    UserId = 1 // Временное значение
+                    UserId = 1 
                 };
 
                 await _context.FoodDiaries.AddAsync(foodEntry);
@@ -209,21 +368,12 @@ namespace NutriPlanner.ViewModels
         }
 
         /// <summary>
-        /// Рассчитывает целевые показатели
-        /// </summary>
-        private void CalculateTargets()
-        {
-            // Здесь будет расчет по формуле Миффлина-Сан Жеора
-            _mainViewModel.UpdateStatus("Расчет выполнен");
-        }
-
-        /// <summary>
         /// Очищает данные дневника
         /// </summary>
         private void ClearData()
         {
             NutritionData = new DailyNutritionDto();
-            InitializeTargets();
+            CalculateTargets(); 
             OnPropertyChanged(nameof(NutritionData));
             _mainViewModel.UpdateStatus("Данные очищены");
         }

@@ -99,7 +99,7 @@ namespace NutriPlanner.ViewModels
         {
             var entity = await _context.Products.FindAsync(SelectedProduct.ProductId);
 
-            if (entity != null)
+            if (entity != null)                                
             {
                 _context.Products.Remove(entity);
                 await _context.SaveChangesAsync();

@@ -121,7 +121,7 @@ namespace NutriPlanner.ViewModels
             Products = new ObservableCollection<Product>();
             PlanItems = new ObservableCollection<NutritionPlanItemDto>();
 
-            AddProductCommand = new RelayCommand(AddProduct);
+            AddProductCommand = new RelayCommand(AddProduct);                        
             RemoveProductCommand = new RelayCommand(RemoveProduct);
 
             LoadProducts();

@@ -10,17 +10,54 @@
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
       
-        <TextBlock Text="Дневник питания"
-                   FontSize="20" FontWeight="Bold"
-                   Margin="0,0,0,10"/>
+        <TextBlock Text="Дневник питания" FontSize="20" FontWeight="Bold" Margin="0,0,0,10"/>
 
-        
-        <DataGrid Grid.Row="1" AutoGenerateColumns="False"
+     
+        <GroupBox Grid.Row="1" Header="Расчет норм КБЖУ" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal" Margin="5">
+                <StackPanel>
+                    <TextBlock Text="Возраст"/>
+                    <TextBox Width="50" Text="{Binding UserAge}"/>
+                </StackPanel>
+
+                <StackPanel Margin="10,0">
+                    <TextBlock Text="Пол"/>
+                    <ComboBox Width="80" ItemsSource="{Binding Genders}" SelectedItem="{Binding UserGender}"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Рост (см)"/>
+                    <TextBox Width="50" Text="{Binding UserHeight}"/>
+                </StackPanel>
+
+                <StackPanel Margin="10,0">
+                    <TextBlock Text="Вес (кг)"/>
+                    <TextBox Width="50" Text="{Binding UserWeight}"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Активность"/>
+                    <ComboBox Width="100" ItemsSource="{Binding ActivityLevels}" SelectedItem="{Binding ActivityLevel}"/>
+                </StackPanel>
+
+                <StackPanel Margin="10,0">
+                    <TextBlock Text="Цель"/>
+                    <ComboBox Width="100" ItemsSource="{Binding Goals}" SelectedItem="{Binding Goal}"/>
+                </StackPanel>
+
+                <Button Content="Рассчитать" Command="{Binding CalculateTargetsCommand}" 
+                        Margin="10,15,0,0" Height="25"/>
+            </StackPanel>
+        </GroupBox>
+
+      
+        <DataGrid Grid.Row="2" AutoGenerateColumns="False"
                   ItemsSource="{Binding NutritionData.Meals}"
                   CanUserAddRows="False"
                   IsReadOnly="True">
@@ -33,8 +70,8 @@
             </DataGrid.Columns>
         </DataGrid>
 
-       
-        <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
+      
+        <StackPanel Grid.Row="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
             <ComboBox Width="200" ItemsSource="{Binding AvailableProducts}"
                       SelectedItem="{Binding SelectedProduct}" DisplayMemberPath="ProductName"/>
             <TextBox Width="50" Margin="5,0" Text="{Binding ProductQuantity}" />
