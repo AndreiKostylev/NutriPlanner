@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using NutriPlanner.Models;
+using NutriPlanner.ViewModels;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -16,11 +18,19 @@ namespace NutriPlanner
     /// </summary>
     public partial class MainWindow : Window
     {
-
+        // Конструктор без параметров (для дизайнеров и совместимости)
         public MainWindow()
         {
             InitializeComponent();
+            // Можно поставить пустую ViewModel или заглушку
+            DataContext = new MainViewModel(null);
+        }
 
+        // Конструктор с пользователем
+        public MainWindow(User user)
+        {
+            InitializeComponent();
+            DataContext = new MainViewModel(user);
         }
     }
 }

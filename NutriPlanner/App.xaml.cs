@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using NutriPlanner.Views;
+using System.Configuration;
 using System.Data;
 using System.Windows;
 
@@ -9,6 +10,12 @@ namespace NutriPlanner
     /// </summary>
     public partial class App : Application
     {
+        private void Application_Startup(object sender, StartupEventArgs e)
+        {
+            // Создаём окно авторизации
+            var loginWindow = new LoginWindow();
+            loginWindow.Show();
+        }
     }
 
 }
