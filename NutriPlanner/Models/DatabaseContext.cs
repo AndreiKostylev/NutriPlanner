@@ -24,7 +24,7 @@ public class DatabaseContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-       
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(u => u.UserId);
@@ -32,43 +32,43 @@ public class DatabaseContext : DbContext
             entity.HasIndex(u => u.Email).IsUnique();
         });
 
-   
+
         modelBuilder.Entity<Product>(entity =>
         {
             entity.HasKey(p => p.ProductId);
             entity.HasIndex(p => p.ProductName).IsUnique();
         });
 
-   
+
         modelBuilder.Entity<Dish>(entity =>
         {
             entity.HasKey(d => d.DishId);
 
-            
+
             entity.HasOne(d => d.User)
                   .WithMany(u => u.Dishes)
                   .HasForeignKey(d => d.UserId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 
-       
+
         modelBuilder.Entity<NutritionPlan>(entity =>
         {
             entity.HasKey(np => np.PlanId);
 
-            
+
             entity.HasOne(np => np.User)
                   .WithMany(u => u.NutritionPlans)
                   .HasForeignKey(np => np.UserId)
                   .OnDelete(DeleteBehavior.NoAction);
         });
 
-       
+
         modelBuilder.Entity<FoodDiary>(entity =>
         {
             entity.HasKey(fd => fd.DiaryId);
 
-            
+
             entity.HasOne(fd => fd.User)
                   .WithMany(u => u.FoodDiaries)
                   .HasForeignKey(fd => fd.UserId)
@@ -85,7 +85,7 @@ public class DatabaseContext : DbContext
                   .OnDelete(DeleteBehavior.NoAction);
         });
 
-       
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(r => r.RoleId);
@@ -96,7 +96,7 @@ public class DatabaseContext : DbContext
                   .OnDelete(DeleteBehavior.NoAction);
         });
 
-     
+
         modelBuilder.Entity<DishProduct>(entity =>
         {
             entity.HasKey(dp => new { dp.DishId, dp.ProductId });
@@ -109,22 +109,23 @@ public class DatabaseContext : DbContext
             entity.HasOne(dp => dp.Product)
                   .WithMany(p => p.DishProducts)
                   .HasForeignKey(dp => dp.ProductId)
-                  .OnDelete(DeleteBehavior.Cascade); 
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
-       
+
         SeedData(modelBuilder);
     }
 
     private void SeedData(ModelBuilder modelBuilder)
     {
-       
+
         modelBuilder.Entity<Role>().HasData(
             new Role { RoleId = 1, RoleName = "User" },
-            new Role { RoleId = 2, RoleName = "Admin" }
+            new Role { RoleId = 2, RoleName = "Dietitian" },
+            new Role { RoleId = 3, RoleName = "Admin" }
         );
 
-    
+
         modelBuilder.Entity<User>().HasData(
             new User
             {
@@ -142,12 +143,31 @@ public class DatabaseContext : DbContext
                 DailyProteinTarget = 150,
                 DailyFatTarget = 83,
                 DailyCarbsTarget = 281,
+                RoleId = 3,
+                RegistrationDate = DateTime.Now
+            },
+            new User
+            {
+                UserId = 2,
+                Username = "dietitian",
+                Email = "dietitian@nutriplanner.com",
+                PasswordHash = "hashed_password",
+                Age = 35,
+                Gender = "Female",
+                Height = 165,
+                Weight = 60,
+                ActivityLevel = "Moderate",
+                Goal = "Maintenance",
+                DailyCalorieTarget = 2200,
+                DailyProteinTarget = 130,
+                DailyFatTarget = 73,
+                DailyCarbsTarget = 247,
                 RoleId = 2,
                 RegistrationDate = DateTime.Now
             }
         );
 
-        
+
         modelBuilder.Entity<Product>().HasData(
             new Product { ProductId = 1, ProductName = "Куриная грудка", Category = "Мясо", Calories = 165, Protein = 31, Fat = 3.6m, Carbohydrates = 0, Unit = "г" },
             new Product { ProductId = 2, ProductName = "Говядина", Category = "Мясо", Calories = 250, Protein = 26, Fat = 15, Carbohydrates = 0, Unit = "г" },

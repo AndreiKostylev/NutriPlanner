@@ -17,10 +17,13 @@ namespace NutriPlanner.Views
 {
     public partial class RegisterWindow : Window
     {
-        public RegisterWindow(Action backAction = null)
+        private readonly Action _backToLogin;
+
+        public RegisterWindow(Action backToLogin = null)
         {
             InitializeComponent();
-            DataContext = new RegisterViewModel(backAction);
+            _backToLogin = backToLogin;
+            DataContext = new RegisterViewModel(OnRegistrationSuccess, _backToLogin);
         }
 
         private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
@@ -28,6 +31,24 @@ namespace NutriPlanner.Views
             if (DataContext is RegisterViewModel vm)
             {
                 vm.Password = ((PasswordBox)sender).Password;
+            }
+        }
+
+        private void OnRegistrationSuccess()
+        {
+            // Закрываем окно регистрации
+            this.Close();
+
+            // Возвращаемся к окну входа
+            _backToLogin?.Invoke();
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Если пользователь закрывает окно крестиком
+            if (_backToLogin != null)
+            {
+                _backToLogin.Invoke();
             }
         }
     }

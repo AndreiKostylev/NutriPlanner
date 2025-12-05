@@ -29,6 +29,36 @@ namespace NutriPlanner.Models
 
         public virtual ICollection<NutritionPlan> NutritionPlans { get; set; } = new List<NutritionPlan>();
         public virtual ICollection<FoodDiary> FoodDiaries { get; set; } = new List<FoodDiary>();
-        public virtual ICollection<Dish> Dishes { get; set; } = new List<Dish>(); // Связь с Dish
+        public virtual ICollection<Dish> Dishes { get; set; } = new List<Dish>();
+
+        // Безопасные методы для проверки ролей
+        public bool IsAdmin()
+        {
+            if (Role == null) return false;
+            return Role.RoleName == "Admin" || Role.RoleName == "Администратор";
+        }
+
+        public bool IsDietitian()
+        {
+            if (Role == null) return false;
+            return Role.RoleName == "Dietitian" || Role.RoleName == "Диетолог";
+        }
+
+        public bool IsUser()
+        {
+            if (Role == null) return false;
+            return Role.RoleName == "User" || Role.RoleName == "Пользователь";
+        }
+
+        public bool IsDietitianOrAdmin()
+        {
+            return IsDietitian() || IsAdmin();
+        }
+
+        // Метод для получения названия роли безопасно
+        public string GetRoleName()
+        {
+            return Role?.RoleName ?? "Неизвестно";
+        }
     }
 }

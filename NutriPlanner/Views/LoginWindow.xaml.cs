@@ -16,15 +16,12 @@ using System.Windows.Shapes;
 
 namespace NutriPlanner.Views
 {
-    /// <summary>
-    /// Логика взаимодействия для LoginWindow.xaml
-    /// </summary>
     public partial class LoginWindow : Window
     {
         public LoginWindow()
         {
             InitializeComponent();
-            var vm = new LoginViewModel(LoginSuccess, OpenRegister);
+            var vm = new LoginViewModel(LoginSuccess, OpenRegister, CloseWindow);
             DataContext = vm;
         }
 
@@ -36,27 +33,45 @@ namespace NutriPlanner.Views
             }
         }
 
-        // Метод, который вызывается после успешного входа
         private void LoginSuccess(User user)
         {
-            if (user == null)
-                return;
+            if (user == null) return;
 
-            // Передаём пользователя в MainWindow
-            var mainWnd = new MainWindow(user);
-            mainWnd.Show();
+            // Открываем главное окно
+            var mainWindow = new MainWindow(user);
+            mainWindow.Show();
+
+            // Закрываем окно входа
             this.Close();
         }
 
         private void OpenRegister()
         {
-            var regWnd = new RegisterWindow(() =>
+            this.Hide();
+
+            var registerWindow = new RegisterWindow(() =>
             {
-                this.Show(); // Показываем окно логина обратно
+                // При возврате из регистрации
+                this.Show();
+                this.Activate();
             });
-            this.Hide(); // Скрываем окно логина
-            regWnd.ShowDialog();
+
+            registerWindow.Owner = this;
+            registerWindow.ShowDialog();
         }
 
+        private void CloseWindow()
+        {
+            this.Close();
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Если это последнее окно, закрываем приложение
+            if (Application.Current.Windows.Count == 1)
+            {
+                Application.Current.Shutdown();
+            }
+        }
     }
 }

@@ -19,6 +19,8 @@ namespace NutriPlanner.ViewModels
     {
         private readonly MainViewModel _mainViewModel;
         private readonly DatabaseContext _context;
+        private readonly User _currentUser;
+
         private DailyNutritionDto _nutritionData;
         private ObservableCollection<ProductDto> _availableProducts;
         private ProductDto _selectedProduct;
@@ -116,12 +118,24 @@ namespace NutriPlanner.ViewModels
         public ICommand SaveToDatabaseCommand { get; }
         public ICommand CalculateTargetsCommand { get; }
 
-        public DailyNutritionViewModel(MainViewModel mainViewModel)
+        public DailyNutritionViewModel(MainViewModel mainViewModel, User currentUser)
         {
             _mainViewModel = mainViewModel;
+            _currentUser = currentUser;
             _context = new DatabaseContext();
             _nutritionData = new DailyNutritionDto();
             _availableProducts = new ObservableCollection<ProductDto>();
+
+            // Инициализация из данных пользователя
+            if (currentUser != null)
+            {
+                UserAge = currentUser.Age;
+                UserGender = currentUser.Gender;
+                UserHeight = currentUser.Height;
+                UserWeight = currentUser.Weight;
+                ActivityLevel = currentUser.ActivityLevel;
+                Goal = currentUser.Goal;
+            }
 
             // Инициализация команд
             AddProductCommand = new RelayCommand(AddProduct, CanAddProduct);
@@ -154,26 +168,33 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private async Task LoadProductsFromDatabase()
         {
-            var products = await _context.Products.ToListAsync();
-            AvailableProducts.Clear();
-
-            foreach (var product in products)
+            try
             {
-                AvailableProducts.Add(new ProductDto
-                {
-                    ProductId = product.ProductId,
-                    ProductName = product.ProductName,
-                    Category = product.Category,
-                    Calories = product.Calories,
-                    Protein = product.Protein,
-                    Fat = product.Fat,
-                    Carbohydrates = product.Carbohydrates,
-                    Unit = product.Unit
-                });
-            }
+                var products = await _context.Products.ToListAsync();
+                AvailableProducts.Clear();
 
-            if (AvailableProducts.Any())
-                SelectedProduct = AvailableProducts.First();
+                foreach (var product in products)
+                {
+                    AvailableProducts.Add(new ProductDto
+                    {
+                        ProductId = product.ProductId,
+                        ProductName = product.ProductName,
+                        Category = product.Category,
+                        Calories = product.Calories,
+                        Protein = product.Protein,
+                        Fat = product.Fat,
+                        Carbohydrates = product.Carbohydrates,
+                        Unit = product.Unit
+                    });
+                }
+
+                if (AvailableProducts.Any())
+                    SelectedProduct = AvailableProducts.First();
+            }
+            catch (Exception ex)
+            {
+                _mainViewModel.UpdateStatus($"Ошибка загрузки продуктов: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -183,14 +204,12 @@ namespace NutriPlanner.ViewModels
         {
             try
             {
-               
                 if (UserAge <= 0 || UserHeight <= 0 || UserWeight <= 0)
                 {
                     _mainViewModel.UpdateStatus("Ошибка: Проверьте возраст, рост и вес");
                     return;
                 }
 
-              
                 decimal bmr;
                 if (UserGender == "Мужской")
                 {
@@ -201,28 +220,20 @@ namespace NutriPlanner.ViewModels
                     bmr = 10 * UserWeight + 6.25m * UserHeight - 5 * UserAge - 161;
                 }
 
-               
                 decimal activityMultiplier = GetActivityMultiplier(ActivityLevel);
-
-            
                 decimal tdee = bmr * activityMultiplier;
-
-              
                 decimal goalMultiplier = GetGoalMultiplier(Goal);
                 decimal targetCalories = tdee * goalMultiplier;
 
-               
-                decimal targetProtein = targetCalories * 0.3m / 4; 
-                decimal targetFat = targetCalories * 0.25m / 9;     
-                decimal targetCarbs = targetCalories * 0.45m / 4;  
+                decimal targetProtein = targetCalories * 0.3m / 4;
+                decimal targetFat = targetCalories * 0.25m / 9;
+                decimal targetCarbs = targetCalories * 0.45m / 4;
 
-              
                 NutritionData.TargetCalories = Math.Round(targetCalories, 2);
                 NutritionData.TargetProtein = Math.Round(targetProtein, 2);
                 NutritionData.TargetFat = Math.Round(targetFat, 2);
                 NutritionData.TargetCarbs = Math.Round(targetCarbs, 2);
 
-               
                 UpdateProgress();
 
                 _mainViewModel.UpdateStatus($"Расчет выполнен: {NutritionData.TargetCalories} ккал/день");
@@ -292,12 +303,10 @@ namespace NutriPlanner.ViewModels
             {
                 var (calories, protein, fat, carbs) = CalculateNutrition(SelectedProduct, ProductQuantity);
 
-                
                 NutritionData.TotalCalories += calories;
                 NutritionData.TotalProtein += protein;
                 NutritionData.TotalFat += fat;
                 NutritionData.TotalCarbs += carbs;
-
 
                 NutritionData.Meals.Add(new MealDto
                 {
@@ -308,9 +317,7 @@ namespace NutriPlanner.ViewModels
                     Carbs = carbs
                 });
 
-                // Обновляем прогресс
                 UpdateProgress();
-
                 OnPropertyChanged(nameof(NutritionData));
                 _mainViewModel.UpdateStatus($"Добавлен: {SelectedProduct.ProductName}");
             }
@@ -344,21 +351,31 @@ namespace NutriPlanner.ViewModels
         {
             try
             {
-                var foodEntry = new FoodDiary
+                if (_currentUser == null)
                 {
-                    Date = DateTime.Today,
-                    ProductId = SelectedProduct?.ProductId,
-                    Quantity = ProductQuantity,
-                    Calories = NutritionData.TotalCalories,
-                    Protein = NutritionData.TotalProtein,
-                    Fat = NutritionData.TotalFat,
-                    Carbohydrates = NutritionData.TotalCarbs,
-                    UserId = 1 
-                };
+                    _mainViewModel.UpdateStatus("Ошибка: пользователь не авторизован");
+                    return;
+                }
 
-                await _context.FoodDiaries.AddAsync(foodEntry);
+                // Сохраняем каждое блюдо отдельно
+                foreach (var meal in NutritionData.Meals)
+                {
+                    var foodEntry = new FoodDiary
+                    {
+                        Date = DateTime.Today,
+                        ProductId = SelectedProduct?.ProductId,
+                        Quantity = ProductQuantity,
+                        Calories = meal.Calories,
+                        Protein = meal.Protein,
+                        Fat = meal.Fat,
+                        Carbohydrates = meal.Carbs,
+                        UserId = _currentUser.UserId
+                    };
+
+                    await _context.FoodDiaries.AddAsync(foodEntry);
+                }
+
                 await _context.SaveChangesAsync();
-
                 _mainViewModel.UpdateStatus("Данные сохранены в базу");
             }
             catch (Exception ex)
@@ -373,7 +390,7 @@ namespace NutriPlanner.ViewModels
         private void ClearData()
         {
             NutritionData = new DailyNutritionDto();
-            CalculateTargets(); 
+            CalculateTargets();
             OnPropertyChanged(nameof(NutritionData));
             _mainViewModel.UpdateStatus("Данные очищены");
         }

@@ -13,24 +13,48 @@ using System.Windows.Shapes;
 
 namespace NutriPlanner
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-        // Конструктор без параметров (для дизайнеров и совместимости)
-        public MainWindow()
+        public User CurrentUser { get; private set; }
+
+        public MainWindow(User currentUser)
         {
             InitializeComponent();
-            // Можно поставить пустую ViewModel или заглушку
-            DataContext = new MainViewModel(null);
+
+            if (currentUser == null)
+            {
+                // Если по какой-то причине пользователь null, закрываем окно
+                MessageBox.Show("Ошибка: пользователь не найден", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                this.Close();
+                return;
+            }
+
+            CurrentUser = currentUser;
+
+            // Передаем пользователя в ViewModel
+            var mainVM = new MainViewModel(currentUser);
+            DataContext = mainVM;
+
+            Title = $"NutriPlanner - {currentUser.Username}";
+            mainVM.UpdateStatus($"Добро пожаловать, {currentUser.Username}!");
         }
 
-        // Конструктор с пользователем
-        public MainWindow(User user)
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            InitializeComponent();
-            DataContext = new MainViewModel(user);
+            base.OnClosing(e);
+
+            // Если это главное окно и оно закрывается, спрашиваем подтверждение
+            if (Application.Current.MainWindow == this)
+            {
+                var result = MessageBox.Show("Закрыть приложение?", "Выход",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.No)
+                {
+                    e.Cancel = true;
+                }
+            }
         }
     }
 }
