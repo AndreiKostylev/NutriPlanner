@@ -5,13 +5,27 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:NutriPlanner"
         xmlns:vm="clr-namespace:NutriPlanner.ViewModels"
+        xmlns:views="clr-namespace:NutriPlanner.Views"
         mc:Ignorable="d"
         Title="NutriPlanner" Height="650" Width="1000">
 
+    <Window.Resources>
 
-    <Window.DataContext>
-        <vm:MainViewModel />
-    </Window.DataContext>
+        <!-- Привязка ViewModel -> View -->
+        <DataTemplate DataType="{x:Type vm:DailyNutritionViewModel}">
+            <views:DailyNutritionView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ProductsViewModel}">
+            <views:ProductsView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:NutritionPlanViewModel}">
+            <views:NutritionPlanView />
+        </DataTemplate>
+
+    </Window.Resources>
+
 
     <Grid Background="#FAFAFA">
 
