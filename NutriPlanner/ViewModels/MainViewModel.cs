@@ -11,7 +11,7 @@ using System.Windows.Input;
 namespace NutriPlanner.ViewModels
 {
     /// <summary>
-    /// Главный ViewModel приложения (Фасад для управления всеми модулями)
+    /// Главный ViewModel приложения
     /// </summary>
     public class MainViewModel : BaseViewModel
     {
@@ -22,7 +22,19 @@ namespace NutriPlanner.ViewModels
         public User CurrentUser
         {
             get => _currentUser;
-            set { _currentUser = value; OnPropertyChanged(); }
+            set
+            {
+                _currentUser = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsUser));
+                OnPropertyChanged(nameof(IsDietitian));
+                OnPropertyChanged(nameof(IsAdmin));
+                OnPropertyChanged(nameof(IsDietitianOrAdmin));
+                OnPropertyChanged(nameof(UserDisplayName));
+
+                // ОБЯЗАТЕЛЬНО инициализируем ViewModels ПОСЛЕ установки пользователя
+                InitializeViewModels();
+            }
         }
 
         public object CurrentView
@@ -37,65 +49,155 @@ namespace NutriPlanner.ViewModels
             set { _statusMessage = value; OnPropertyChanged(); }
         }
 
-        public ICommand ShowDailyNutritionCommand { get; }
-        public ICommand ShowProductsCommand { get; }
-        public ICommand ShowNutritionPlanCommand { get; }
-        public ICommand ShowAboutCommand { get; }
-        public ICommand ShowProfileCommand { get; }
-        public ICommand LogoutCommand { get; }
+        // Свойства для проверки ролей
+        public bool IsUser => CurrentUser?.IsUser() ?? false;
+        public bool IsDietitian => CurrentUser?.IsDietitian() ?? false;
+        public bool IsAdmin => CurrentUser?.IsAdmin() ?? false;
+        public bool IsDietitianOrAdmin => IsDietitian || IsAdmin;
+        public string UserDisplayName => CurrentUser != null ?
+            $"{CurrentUser.Username} ({CurrentUser.GetRoleName()})" : "Не авторизован";
 
-        public DailyNutritionViewModel DailyNutritionVM { get; }
-        public ProductsViewModel ProductsVM { get; }
-        public NutritionPlanViewModel NutritionPlanVM { get; }
+        // ViewModels
+        public DailyNutritionViewModel DailyNutritionVM { get; private set; }
+        public ProductsViewModel ProductsVM { get; private set; }
+        public NutritionPlanViewModel NutritionPlanVM { get; private set; }
+        public DietitianDashboardViewModel DietitianDashboardVM { get; private set; }
+
+        // Команды
+        public ICommand ShowDailyNutritionCommand { get; private set; }
+        public ICommand ShowProductsCommand { get; private set; }
+        public ICommand ShowNutritionPlanCommand { get; private set; }
+        public ICommand ShowProfileCommand { get; private set; }
+        public ICommand ShowAboutCommand { get; private set; }
+        public ICommand LogoutCommand { get; private set; }
+        public ICommand ShowDietitianDashboardCommand { get; private set; }
 
         public MainViewModel(User currentUser)
         {
+            // ВАЖНО: Сначала устанавливаем пользователя
             CurrentUser = currentUser;
 
-            DailyNutritionVM = new DailyNutritionViewModel(this, currentUser);
-            ProductsVM = new ProductsViewModel(this, currentUser);
-            NutritionPlanVM = new NutritionPlanViewModel(this, currentUser);
+            // ПОТОМ инициализируем команды
+            InitializeCommands();
+        }
 
+        private void InitializeCommands()
+        {
             ShowDailyNutritionCommand = new RelayCommand(ShowDailyNutrition);
             ShowProductsCommand = new RelayCommand(ShowProducts);
             ShowNutritionPlanCommand = new RelayCommand(ShowNutritionPlan);
-            ShowAboutCommand = new RelayCommand(ShowAbout);
             ShowProfileCommand = new RelayCommand(ShowProfile);
+            ShowAboutCommand = new RelayCommand(ShowAbout);
             LogoutCommand = new RelayCommand(Logout);
+            ShowDietitianDashboardCommand = new RelayCommand(ShowDietitianDashboard);
+        }
 
-            ShowDailyNutrition();
+        private void InitializeViewModels()
+        {
+            try
+            {
+                if (CurrentUser != null)
+                {
+                    // Всегда создаем базовые ViewModels
+                    DailyNutritionVM = new DailyNutritionViewModel(this, CurrentUser);
+                    ProductsVM = new ProductsViewModel(this, CurrentUser);
+                    NutritionPlanVM = new NutritionPlanViewModel(this, CurrentUser);
+
+                  
+                    if (IsDietitianOrAdmin)
+                    {
+                        DietitianDashboardVM = new DietitianDashboardViewModel(this);
+
+                        // Автоматически показываем Dashboard при входе диетолога/админа
+                        ShowDietitianDashboard();
+                    }
+                    else
+                    {
+                        // Для обычных пользователей показываем дневник
+                        ShowDailyNutrition();
+                    }
+
+                    StatusMessage = $"Добро пожаловать, {CurrentUser.Username}!";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Ошибка загрузки модулей";
+            }
         }
 
         private void ShowDailyNutrition()
         {
-            CurrentView = DailyNutritionVM;
-            StatusMessage = "Режим: Дневник питания";
+            if (DailyNutritionVM != null)
+            {
+                CurrentView = DailyNutritionVM;
+                StatusMessage = "Режим: Дневник питания";
+            }
         }
 
         private void ShowProducts()
         {
-            CurrentView = ProductsVM;
-            StatusMessage = "Режим: Управление продуктами";
+            if (ProductsVM != null)
+            {
+                CurrentView = ProductsVM;
+                StatusMessage = "Режим: Управление продуктами";
+            }
         }
 
         private void ShowNutritionPlan()
         {
-            CurrentView = NutritionPlanVM;
-            StatusMessage = "Режим: План питания";
+            if (NutritionPlanVM != null)
+            {
+                CurrentView = NutritionPlanVM;
+                StatusMessage = "Режим: План питания";
+            }
+        }
+
+        private void ShowDietitianDashboard()
+        {
+            // ВАЖНО: Проверяем права перед показом
+            if (!IsDietitianOrAdmin)
+            {
+                MessageBox.Show("У вас нет прав для доступа к панели диетолога!",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (DietitianDashboardVM != null)
+            {
+                CurrentView = DietitianDashboardVM;
+                StatusMessage = "Режим: Панель диетолога";
+            }
+            else
+            {
+                MessageBox.Show("Панель диетолога не инициализирована",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ShowProfile()
         {
             StatusMessage = "Режим: Профиль пользователя";
-            // TODO: Создать UserProfileView
+            MessageBox.Show($"Профиль: {CurrentUser?.Username}\nРоль: {CurrentUser?.GetRoleName()}",
+                "Профиль", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void ShowAbout()
         {
-            var wnd = new AboutWindow();
-            wnd.Owner = Application.Current.MainWindow;
-            wnd.ShowDialog();
-            StatusMessage = "О программе открыто";
+            try
+            {
+                var wnd = new AboutWindow();
+                wnd.Owner = Application.Current.MainWindow;
+                wnd.ShowDialog();
+                StatusMessage = "О программе открыто";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка открытия окна: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void Logout()
@@ -105,16 +207,17 @@ namespace NutriPlanner.ViewModels
 
             if (result == MessageBoxResult.Yes)
             {
-                // Закрываем главное окно
-                var mainWindow = Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
-                if (mainWindow != null)
+                try
                 {
-                    mainWindow.Close();
+                    Application.Current.MainWindow?.Close();
+                    var loginWindow = new LoginWindow();
+                    loginWindow.Show();
                 }
-
-                // Открываем окно входа
-                var loginWindow = new LoginWindow();
-                loginWindow.Show();
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при выходе: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 

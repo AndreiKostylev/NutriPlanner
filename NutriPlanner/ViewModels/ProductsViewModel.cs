@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.EntityFrameworkCore;
+using System.Windows;
 
 namespace NutriPlanner.ViewModels
 {
@@ -21,22 +22,27 @@ namespace NutriPlanner.ViewModels
         public ObservableCollection<ProductDto> Products { get; set; }
         public ProductDto SelectedProduct { get; set; }
 
+        // Права доступа
+        public bool CanEditProducts => _currentUser?.Role?.RoleName == "Dietitian" ||
+                                      _currentUser?.Role?.RoleName == "Admin";
+
         public ICommand AddCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand DeleteCommand { get; }
-        public ICommand RefreshCommand { get; }
+        public ICommand LoadCommand { get; }
 
         public ProductsViewModel(MainViewModel mainVM, User currentUser)
         {
             _context = new DatabaseContext();
             _mainVM = mainVM;
             _currentUser = currentUser;
+
             Products = new ObservableCollection<ProductDto>();
 
-            AddCommand = new RelayCommand(AddProduct, CanAdd);
-            SaveCommand = new RelayCommand(SaveProduct, CanSave);
-            DeleteCommand = new RelayCommand(DeleteProduct, CanDelete);
-            RefreshCommand = new RelayCommand(RefreshProducts);
+            AddCommand = new RelayCommand(AddProduct, () => CanEditProducts);
+            SaveCommand = new RelayCommand(SaveProduct, () => CanEditProducts && SelectedProduct != null);
+            DeleteCommand = new RelayCommand(DeleteProduct, () => CanEditProducts && SelectedProduct != null && SelectedProduct.ProductId != 0);
+            LoadCommand = new RelayCommand(LoadProducts);
 
             LoadProducts();
         }
@@ -65,36 +71,31 @@ namespace NutriPlanner.ViewModels
             }
             catch (Exception ex)
             {
-                _mainVM.UpdateStatus($"Ошибка загрузки продуктов: {ex.Message}");
+                _mainVM.UpdateStatus($"Ошибка загрузки: {ex.Message}");
             }
         }
 
-        private void RefreshProducts() => LoadProducts();
-
-        private bool CanAdd() => _currentUser != null && (_currentUser.IsAdmin() || _currentUser.IsDietitian());
-        private bool CanSave() => SelectedProduct != null && CanAdd();
-        private bool CanDelete() => SelectedProduct != null && SelectedProduct.ProductId != 0 && CanAdd();
-
         private void AddProduct()
         {
-            if (!CanAdd())
+            if (!CanEditProducts)
             {
-                _mainVM.UpdateStatus("У вас нет прав на добавление продуктов");
+                MessageBox.Show("Недостаточно прав для добавления продуктов", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            var p = new ProductDto { ProductName = "Новый продукт" };
+            var p = new ProductDto { ProductName = "Новый продукт", Unit = "г" };
             Products.Add(p);
             SelectedProduct = p;
             OnPropertyChanged(nameof(SelectedProduct));
-            _mainVM.UpdateStatus("Добавлен новый продукт");
         }
 
         private async void SaveProduct()
         {
-            if (!CanSave())
+            if (!CanEditProducts)
             {
-                _mainVM.UpdateStatus("У вас нет прав на сохранение продуктов");
+                MessageBox.Show("Недостаточно прав для сохранения продуктов", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -127,16 +128,26 @@ namespace NutriPlanner.ViewModels
             catch (Exception ex)
             {
                 _mainVM.UpdateStatus($"Ошибка сохранения: {ex.Message}");
+                MessageBox.Show(ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private async void DeleteProduct()
         {
-            if (!CanDelete())
+            if (!CanEditProducts)
             {
-                _mainVM.UpdateStatus("У вас нет прав на удаление продуктов");
+                MessageBox.Show("Недостаточно прав для удаления продуктов", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
+            var result = MessageBox.Show(
+                $"Удалить продукт '{SelectedProduct.ProductName}'?",
+                "Подтверждение",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
 
             try
             {
@@ -153,6 +164,7 @@ namespace NutriPlanner.ViewModels
             catch (Exception ex)
             {
                 _mainVM.UpdateStatus($"Ошибка удаления: {ex.Message}");
+                MessageBox.Show(ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

@@ -23,6 +23,7 @@ namespace NutriPlanner.Models
         public decimal DailyFatTarget { get; set; }
         public decimal DailyCarbsTarget { get; set; }
         public DateTime RegistrationDate { get; set; } = DateTime.Now;
+        public bool IsActive { get; set; } = true; 
 
         public int RoleId { get; set; }
         public virtual Role Role { get; set; } = null!;
@@ -31,23 +32,23 @@ namespace NutriPlanner.Models
         public virtual ICollection<FoodDiary> FoodDiaries { get; set; } = new List<FoodDiary>();
         public virtual ICollection<Dish> Dishes { get; set; } = new List<Dish>();
 
-        // Безопасные методы для проверки ролей
+      
         public bool IsAdmin()
         {
             if (Role == null) return false;
-            return Role.RoleName == "Admin" || Role.RoleName == "Администратор";
+            return Role.RoleName == "Admin";
         }
 
         public bool IsDietitian()
         {
             if (Role == null) return false;
-            return Role.RoleName == "Dietitian" || Role.RoleName == "Диетолог";
+            return Role.RoleName == "Dietitian";
         }
 
         public bool IsUser()
         {
             if (Role == null) return false;
-            return Role.RoleName == "User" || Role.RoleName == "Пользователь";
+            return Role.RoleName == "User";
         }
 
         public bool IsDietitianOrAdmin()
@@ -55,7 +56,7 @@ namespace NutriPlanner.Models
             return IsDietitian() || IsAdmin();
         }
 
-        // Метод для получения названия роли безопасно
+       
         public string GetRoleName()
         {
             return Role?.RoleName ?? "Неизвестно";

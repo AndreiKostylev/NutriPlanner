@@ -7,11 +7,43 @@
         xmlns:vm="clr-namespace:NutriPlanner.ViewModels"
         xmlns:views="clr-namespace:NutriPlanner.Views"
         mc:Ignorable="d"
-        Title="NutriPlanner" Height="650" Width="1000">
+        Title="NutriPlanner" 
+        Height="650" 
+        Width="1000"
+        WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
+       
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
-        <!-- Привязка ViewModel -> View -->
+        <Style x:Key="MenuButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"
+                                              Margin="10,0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E3F2FD"/>
+                                <Setter Property="BorderBrush" Value="#2196F3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        
         <DataTemplate DataType="{x:Type vm:DailyNutritionViewModel}">
             <views:DailyNutritionView />
         </DataTemplate>
@@ -24,12 +56,15 @@
             <views:NutritionPlanView />
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:DietitianDashboardViewModel}">
+            <views:DietitianDashboardView />
+        </DataTemplate>
+
     </Window.Resources>
 
-
     <Grid Background="#FAFAFA">
-
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="30" />
         </Grid.RowDefinitions>
@@ -39,45 +74,109 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Background="#2D3E50" Grid.Row="0" Grid.Column="0">
-            <StackPanel Margin="10" VerticalAlignment="Top">
-
-                <TextBlock Text="NUTRIPLANNER"
+      
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#2D3E50" Padding="10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="NUTRIPLANNER" 
                            Foreground="White"
                            FontWeight="Bold"
-                           FontSize="16"
-                           Margin="0 0 0 20"
-                           TextAlignment="Center"/>
+                           FontSize="18"
+                           VerticalAlignment="Center"/>
 
-                <Button Content="Дневник питания"
-                        Margin="0 5"
-                        Command="{Binding ShowDailyNutritionCommand}" />
+                <TextBlock Text="{Binding UserDisplayName}"
+                           Foreground="#FFCC00"
+                           FontWeight="SemiBold"
+                           FontSize="14"
+                           Margin="20,0,0,0"
+                           VerticalAlignment="Center"/>
 
-                <Button Content="Продукты"
-                        Margin="0 5"
-                        Command="{Binding ShowProductsCommand}" />
-
-                <Button Content="План питания"
-                        Margin="0 5"
-                        Command="{Binding ShowNutritionPlanCommand}" />
-
-                <Button Content="О программе"
-                        Margin="0 25"
-                        Command="{Binding ShowAboutCommand}" />
-
+                <Button Content="Выход" 
+                        Command="{Binding LogoutCommand}"
+                        Margin="20,0,0,0"
+                        Padding="10,5"
+                        Background="Transparent"
+                        Foreground="White"
+                        BorderBrush="#FF3333"/>
             </StackPanel>
         </Border>
 
-    
-        <Border Grid.Row="0" Grid.Column="1"
+     
+        <Border Grid.Row="1" Grid.Column="0" Background="#F5F5F5">
+            <ScrollViewer>
+                <StackPanel Margin="10" VerticalAlignment="Top">
+
+                   
+                    <TextBlock Text="Основное" 
+                               Foreground="#666666"
+                               FontWeight="Bold"
+                               Margin="0,0,0,5"/>
+
+                    <Button Content="Дневник питания"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowDailyNutritionCommand}" 
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                    <Button Content="Продукты"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowProductsCommand}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                    <Button Content="План питания"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowNutritionPlanCommand}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                   
+                    <TextBlock Text="Для диетологов" 
+                               Foreground="#666666"
+                               FontWeight="Bold"
+                               Margin="0,20,0,5"
+                               Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <Button Content="📊 Панель диетолога"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowDietitianDashboardCommand}"
+                            Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                   
+                    <TextBlock Text="Общее" 
+                               Foreground="#666666"
+                               FontWeight="Bold"
+                               Margin="0,20,0,5"/>
+
+                    <Button Content="Профиль"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowProfileCommand}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                    <Button Content="О программе"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowAboutCommand}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+       
+        <Border Grid.Row="1" Grid.Column="1"
                 Background="White" Padding="15">
             <ContentControl Content="{Binding CurrentView}" />
         </Border>
 
-        <Border Grid.Row="1" Grid.ColumnSpan="2"
+   
+        <Border Grid.Row="2" Grid.ColumnSpan="2"
                 Background="#ECECEC" Padding="8">
             <TextBlock Text="{Binding StatusMessage}" 
-                       VerticalAlignment="Center"/>
+                       VerticalAlignment="Center"
+                       FontStyle="Italic"/>
         </Border>
 
     </Grid>
