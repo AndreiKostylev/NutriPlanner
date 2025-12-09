@@ -1,0 +1,120 @@
+﻿<UserControl x:Class="NutriPlanner.Views.ClientManagementView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             Background="White">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" 
+                   Text="Управление клиентами" 
+                   FontSize="20" 
+                   FontWeight="Bold"
+                   Margin="0,0,0,10"/>
+
+        <!-- Панель поиска -->
+        <Border Grid.Row="1" 
+                BorderBrush="#E0E0E0" 
+                BorderThickness="1" 
+                CornerRadius="5" 
+                Padding="10"
+                Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Поиск клиента:" 
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0"/>
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Width="200"
+                         Padding="5"
+                         VerticalContentAlignment="Center"/>
+                <Button Content="Обновить список" 
+                        Command="{Binding LoadClientsCommand}"
+                        Margin="20,0,0,0"
+                        Padding="10,5"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Список клиентов -->
+        <GroupBox Grid.Row="2" 
+                  Header="Список клиентов" 
+                  Padding="5">
+            <DataGrid AutoGenerateColumns="False"
+                      ItemsSource="{Binding Clients}"
+                      SelectedItem="{Binding SelectedClient}"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Имя пользователя" 
+                                        Binding="{Binding Username}" 
+                                        Width="120"/>
+                    <DataGridTextColumn Header="Email" 
+                                        Binding="{Binding Email}" 
+                                        Width="150"/>
+                    <DataGridTextColumn Header="Возраст" 
+                                        Binding="{Binding Age}" 
+                                        Width="60"/>
+                    <DataGridTextColumn Header="Пол" 
+                                        Binding="{Binding Gender}" 
+                                        Width="70"/>
+                    <DataGridTextColumn Header="Рост" 
+                                        Binding="{Binding Height}" 
+                                        Width="60"/>
+                    <DataGridTextColumn Header="Вес" 
+                                        Binding="{Binding Weight}" 
+                                        Width="60"/>
+                    <DataGridTextColumn Header="Цель" 
+                                        Binding="{Binding Goal}" 
+                                        Width="100"/>
+                    <DataGridTextColumn Header="Калории" 
+                                        Binding="{Binding DailyCalorieTarget}" 
+                                        Width="70"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+
+        <!-- Панель действий -->
+        <Border Grid.Row="3" 
+                BorderBrush="#E0E0E0" 
+                BorderThickness="1" 
+                CornerRadius="5" 
+                Padding="10"
+                Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" 
+                        HorizontalAlignment="Center">
+                <Button Content="Редактировать" 
+                        Command="{Binding EditClientCommand}"
+                        Padding="15,8"
+                        Margin="0,0,10,0"
+                        Width="120"/>
+                <Button Content="Создать план" 
+                        Command="{Binding CreatePlanForClientCommand}"
+                        Padding="15,8"
+                        Margin="0,0,10,0"
+                        Width="120"
+                        Background="#4CAF50"
+                        Foreground="White"/>
+                <Button Content="Просмотр дневника" 
+                        Command="{Binding ViewClientDiaryCommand}"
+                        Padding="15,8"
+                        Margin="0,0,10,0"
+                        Width="120"/>
+                <Button Content="Экспорт данных" 
+                        Command="{Binding ExportClientDataCommand}"
+                        Padding="15,8"
+                        Width="120"
+                        Background="#2196F3"
+                        Foreground="White"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

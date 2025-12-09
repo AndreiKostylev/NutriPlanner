@@ -13,7 +13,7 @@
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
-       
+
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
 
         <Style x:Key="MenuButtonStyle" TargetType="Button">
@@ -43,7 +43,7 @@
             </Setter>
         </Style>
 
-        
+
         <DataTemplate DataType="{x:Type vm:DailyNutritionViewModel}">
             <views:DailyNutritionView />
         </DataTemplate>
@@ -60,6 +60,10 @@
             <views:DietitianDashboardView />
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:ClientManagementViewModel}">
+            <views:ClientManagementView />
+        </DataTemplate>
+
     </Window.Resources>
 
     <Grid Background="#FAFAFA">
@@ -74,7 +78,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-      
+
         <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#2D3E50" Padding="10">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="NUTRIPLANNER" 
@@ -100,12 +104,12 @@
             </StackPanel>
         </Border>
 
-     
+
         <Border Grid.Row="1" Grid.Column="0" Background="#F5F5F5">
             <ScrollViewer>
                 <StackPanel Margin="10" VerticalAlignment="Top">
 
-                   
+
                     <TextBlock Text="Основное" 
                                Foreground="#666666"
                                FontWeight="Bold"
@@ -129,7 +133,7 @@
                             Command="{Binding ShowNutritionPlanCommand}"
                             Style="{StaticResource MenuButtonStyle}"/>
 
-                   
+
                     <TextBlock Text="Для диетологов" 
                                Foreground="#666666"
                                FontWeight="Bold"
@@ -143,7 +147,14 @@
                             Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Style="{StaticResource MenuButtonStyle}"/>
 
-                   
+                    <Button Content="👥 Управление клиентами"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowClientManagementCommand}"
+                            Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+
                     <TextBlock Text="Общее" 
                                Foreground="#666666"
                                FontWeight="Bold"
@@ -165,13 +176,13 @@
             </ScrollViewer>
         </Border>
 
-       
+
         <Border Grid.Row="1" Grid.Column="1"
                 Background="White" Padding="15">
             <ContentControl Content="{Binding CurrentView}" />
         </Border>
 
-   
+
         <Border Grid.Row="2" Grid.ColumnSpan="2"
                 Background="#ECECEC" Padding="8">
             <TextBlock Text="{Binding StatusMessage}" 

@@ -32,7 +32,6 @@ namespace NutriPlanner.ViewModels
                 OnPropertyChanged(nameof(IsDietitianOrAdmin));
                 OnPropertyChanged(nameof(UserDisplayName));
 
-                // ОБЯЗАТЕЛЬНО инициализируем ViewModels ПОСЛЕ установки пользователя
                 InitializeViewModels();
             }
         }
@@ -62,22 +61,21 @@ namespace NutriPlanner.ViewModels
         public ProductsViewModel ProductsVM { get; private set; }
         public NutritionPlanViewModel NutritionPlanVM { get; private set; }
         public DietitianDashboardViewModel DietitianDashboardVM { get; private set; }
+        public ClientManagementViewModel ClientManagementVM { get; private set; } // Новый
 
         // Команды
         public ICommand ShowDailyNutritionCommand { get; private set; }
         public ICommand ShowProductsCommand { get; private set; }
         public ICommand ShowNutritionPlanCommand { get; private set; }
+        public ICommand ShowDietitianDashboardCommand { get; private set; }
+        public ICommand ShowClientManagementCommand { get; private set; } // Новый
         public ICommand ShowProfileCommand { get; private set; }
         public ICommand ShowAboutCommand { get; private set; }
         public ICommand LogoutCommand { get; private set; }
-        public ICommand ShowDietitianDashboardCommand { get; private set; }
 
         public MainViewModel(User currentUser)
         {
-            // ВАЖНО: Сначала устанавливаем пользователя
             CurrentUser = currentUser;
-
-            // ПОТОМ инициализируем команды
             InitializeCommands();
         }
 
@@ -86,10 +84,11 @@ namespace NutriPlanner.ViewModels
             ShowDailyNutritionCommand = new RelayCommand(ShowDailyNutrition);
             ShowProductsCommand = new RelayCommand(ShowProducts);
             ShowNutritionPlanCommand = new RelayCommand(ShowNutritionPlan);
+            ShowDietitianDashboardCommand = new RelayCommand(ShowDietitianDashboard);
+            ShowClientManagementCommand = new RelayCommand(ShowClientManagement); // Новая команда
             ShowProfileCommand = new RelayCommand(ShowProfile);
             ShowAboutCommand = new RelayCommand(ShowAbout);
             LogoutCommand = new RelayCommand(Logout);
-            ShowDietitianDashboardCommand = new RelayCommand(ShowDietitianDashboard);
         }
 
         private void InitializeViewModels()
@@ -103,19 +102,15 @@ namespace NutriPlanner.ViewModels
                     ProductsVM = new ProductsViewModel(this, CurrentUser);
                     NutritionPlanVM = new NutritionPlanViewModel(this, CurrentUser);
 
-                  
+                    // Для диетологов и админов
                     if (IsDietitianOrAdmin)
                     {
                         DietitianDashboardVM = new DietitianDashboardViewModel(this);
+                        ClientManagementVM = new ClientManagementViewModel(this, CurrentUser); // Новый
+                    }
 
-                        // Автоматически показываем Dashboard при входе диетолога/админа
-                        ShowDietitianDashboard();
-                    }
-                    else
-                    {
-                        // Для обычных пользователей показываем дневник
-                        ShowDailyNutrition();
-                    }
+                    // По умолчанию показываем дневник питания
+                    ShowDailyNutrition();
 
                     StatusMessage = $"Добро пожаловать, {CurrentUser.Username}!";
                 }
@@ -157,7 +152,6 @@ namespace NutriPlanner.ViewModels
 
         private void ShowDietitianDashboard()
         {
-            // ВАЖНО: Проверяем права перед показом
             if (!IsDietitianOrAdmin)
             {
                 MessageBox.Show("У вас нет прав для доступа к панели диетолога!",
@@ -174,6 +168,22 @@ namespace NutriPlanner.ViewModels
             {
                 MessageBox.Show("Панель диетолога не инициализирована",
                     "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowClientManagement()
+        {
+            if (!IsDietitianOrAdmin)
+            {
+                MessageBox.Show("У вас нет прав для управления клиентами!",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (ClientManagementVM != null)
+            {
+                CurrentView = ClientManagementVM;
+                StatusMessage = "Режим: Управление клиентами";
             }
         }
 
