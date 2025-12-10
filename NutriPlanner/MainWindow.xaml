@@ -64,6 +64,10 @@
             <views:ClientManagementView />
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:MealTemplatesViewModel}">
+            <views:MealTemplatesView />
+        </DataTemplate>
+
     </Window.Resources>
 
     <Grid Background="#FAFAFA">
@@ -151,6 +155,13 @@
                             Margin="0,2"
                             Padding="10,8"
                             Command="{Binding ShowClientManagementCommand}"
+                            Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MenuButtonStyle}"/>
+
+                    <Button Content="🍽️ Шаблоны блюд"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowMealTemplatesCommand}"
                             Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
                             Style="{StaticResource MenuButtonStyle}"/>
 
