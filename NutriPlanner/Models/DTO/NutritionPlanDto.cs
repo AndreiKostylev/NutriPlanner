@@ -17,5 +17,18 @@ namespace NutriPlanner.Models.DTO
         public decimal DailyProtein { get; set; }
         public decimal DailyFat { get; set; }
         public decimal DailyCarbohydrates { get; set; }
+        public string Status { get; set; } = string.Empty; 
+        public string CreatedBy { get; set; } =  "Диетолог"; 
+
+        
+        public bool IsActiveToday(DateTime date)
+        {
+            return Status == "Активен" && date >= StartDate && date <= EndDate;
+        }
+
+        public int DaysRemaining(DateTime currentDate)
+        {
+            return EndDate >= currentDate ? (EndDate.Date - currentDate.Date).Days + 1 : 0;
+        }
     }
 }

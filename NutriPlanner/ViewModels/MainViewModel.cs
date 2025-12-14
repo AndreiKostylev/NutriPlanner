@@ -59,10 +59,11 @@ namespace NutriPlanner.ViewModels
         // ViewModels
         public DailyNutritionViewModel DailyNutritionVM { get; private set; }
         public ProductsViewModel ProductsVM { get; private set; }
-        public NutritionPlanViewModel NutritionPlanVM { get; private set; }
+        public NutritionPlanViewModel NutritionPlanVM { get; private set; } // Только для диетологов
         public DietitianDashboardViewModel DietitianDashboardVM { get; private set; }
         public ClientManagementViewModel ClientManagementVM { get; private set; }
-        public MealTemplatesViewModel MealTemplatesVM { get; private set; } // Новый
+        public MealTemplatesViewModel MealTemplatesVM { get; private set; }
+        public UserPlanViewViewModel UserPlanViewVM { get; private set; } // Для просмотра планов
 
         // Команды
         public ICommand ShowDailyNutritionCommand { get; private set; }
@@ -70,7 +71,8 @@ namespace NutriPlanner.ViewModels
         public ICommand ShowNutritionPlanCommand { get; private set; }
         public ICommand ShowDietitianDashboardCommand { get; private set; }
         public ICommand ShowClientManagementCommand { get; private set; }
-        public ICommand ShowMealTemplatesCommand { get; private set; } // Новый
+        public ICommand ShowMealTemplatesCommand { get; private set; }
+        public ICommand ShowUserPlanViewCommand { get; private set; }
         public ICommand ShowProfileCommand { get; private set; }
         public ICommand ShowAboutCommand { get; private set; }
         public ICommand LogoutCommand { get; private set; }
@@ -88,7 +90,8 @@ namespace NutriPlanner.ViewModels
             ShowNutritionPlanCommand = new RelayCommand(ShowNutritionPlan);
             ShowDietitianDashboardCommand = new RelayCommand(ShowDietitianDashboard);
             ShowClientManagementCommand = new RelayCommand(ShowClientManagement);
-            ShowMealTemplatesCommand = new RelayCommand(ShowMealTemplates); // Новая команда
+            ShowMealTemplatesCommand = new RelayCommand(ShowMealTemplates);
+            ShowUserPlanViewCommand = new RelayCommand(ShowUserPlanView);
             ShowProfileCommand = new RelayCommand(ShowProfile);
             ShowAboutCommand = new RelayCommand(ShowAbout);
             LogoutCommand = new RelayCommand(Logout);
@@ -100,17 +103,20 @@ namespace NutriPlanner.ViewModels
             {
                 if (CurrentUser != null)
                 {
-                    // Всегда создаем базовые ViewModels
+                    // Всегда создаем базовые ViewModels для всех пользователей
                     DailyNutritionVM = new DailyNutritionViewModel(this, CurrentUser);
                     ProductsVM = new ProductsViewModel(this, CurrentUser);
-                    NutritionPlanVM = new NutritionPlanViewModel(this, CurrentUser);
 
-                    // Для диетологов и админов
+                    // UserPlanViewViewModel для просмотра планов (доступен всем)
+                    UserPlanViewVM = new UserPlanViewViewModel(this, CurrentUser);
+
+                    // NutritionPlanVM создаем ТОЛЬКО для диетологов и админов
                     if (IsDietitianOrAdmin)
                     {
+                        NutritionPlanVM = new NutritionPlanViewModel(this, CurrentUser);
                         DietitianDashboardVM = new DietitianDashboardViewModel(this);
                         ClientManagementVM = new ClientManagementViewModel(this, CurrentUser);
-                        MealTemplatesVM = new MealTemplatesViewModel(this, CurrentUser); // Новый
+                        MealTemplatesVM = new MealTemplatesViewModel(this, CurrentUser);
                     }
 
                     // По умолчанию показываем дневник питания
@@ -147,10 +153,40 @@ namespace NutriPlanner.ViewModels
 
         private void ShowNutritionPlan()
         {
+            // Проверяем права доступа
+            if (!IsDietitianOrAdmin)
+            {
+                MessageBox.Show("Создание планов питания доступно только диетологам и администраторам.\n\n" +
+                              "Для просмотра своих планов используйте раздел 'Мои планы питания'.",
+                              "Ограничение доступа",
+                              MessageBoxButton.OK,
+                              MessageBoxImage.Warning);
+                return;
+            }
+
             if (NutritionPlanVM != null)
             {
                 CurrentView = NutritionPlanVM;
-                StatusMessage = "Режим: План питания";
+                StatusMessage = "Режим: Создание планов питания (для диетологов)";
+            }
+            else
+            {
+                MessageBox.Show("Модуль создания планов не инициализирован",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowUserPlanView()
+        {
+            if (UserPlanViewVM != null)
+            {
+                CurrentView = UserPlanViewVM;
+                StatusMessage = "Режим: Мои планы питания";
+            }
+            else
+            {
+                MessageBox.Show("Модуль просмотра планов не инициализирован",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -210,7 +246,15 @@ namespace NutriPlanner.ViewModels
         private void ShowProfile()
         {
             StatusMessage = "Режим: Профиль пользователя";
-            MessageBox.Show($"Профиль: {CurrentUser?.Username}\nРоль: {CurrentUser?.GetRoleName()}",
+            MessageBox.Show($"Профиль: {CurrentUser?.Username}\n" +
+                          $"Роль: {CurrentUser?.GetRoleName()}\n" +
+                          $"Email: {CurrentUser?.Email}\n" +
+                          $"Возраст: {CurrentUser?.Age}\n" +
+                          $"Рост: {CurrentUser?.Height} см\n" +
+                          $"Вес: {CurrentUser?.Weight} кг\n" +
+                          $"Цель: {CurrentUser?.Goal}\n" +
+                          $"Активность: {CurrentUser?.ActivityLevel}\n" +
+                          $"Цели: {CurrentUser?.DailyCalorieTarget} ккал/день",
                 "Профиль", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 

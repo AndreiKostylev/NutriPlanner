@@ -9,12 +9,11 @@ namespace NutriPlanner.Models.DTO
     public class MealDto
     {
         public string MealName { get; set; } = string.Empty;
-        public string MealType { get; set; } = string.Empty;
         public DateTime MealTime { get; set; }
         public decimal Calories { get; set; }
         public decimal Protein { get; set; }
         public decimal Fat { get; set; }
         public decimal Carbs { get; set; }
-        public decimal Progress { get; set; }
+        public decimal Quantity { get; set; } 
     }
 }

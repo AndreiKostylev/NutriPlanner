@@ -9,12 +9,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.EntityFrameworkCore;
+using System.Windows;
 
 namespace NutriPlanner.ViewModels
 {
     /// <summary>
     /// ViewModel для дневника питания пользователя
-    /// Только просмотр и добавление СВОИХ записей
     /// </summary>
     public class DailyNutritionViewModel : BaseViewModel
     {
@@ -22,15 +22,17 @@ namespace NutriPlanner.ViewModels
         private readonly DatabaseContext _context;
         private readonly User _currentUser;
 
-        private DailyNutritionDto _nutritionData;
+        private DailyNutritionDto _dailyNutrition;
         private ObservableCollection<ProductDto> _availableProducts;
         private ProductDto _selectedProduct;
         private decimal _productQuantity = 100;
+        private DateTime _selectedDate = DateTime.Today;
+        private ObservableCollection<MealDto> _meals;
 
-        public DailyNutritionDto NutritionData
+        public DailyNutritionDto DailyNutrition
         {
-            get => _nutritionData;
-            set { _nutritionData = value; OnPropertyChanged(); }
+            get => _dailyNutrition;
+            set { _dailyNutrition = value; OnPropertyChanged(); }
         }
 
         public ObservableCollection<ProductDto> AvailableProducts
@@ -51,11 +53,30 @@ namespace NutriPlanner.ViewModels
             set { _productQuantity = value; OnPropertyChanged(); }
         }
 
+        public DateTime SelectedDate
+        {
+            get => _selectedDate;
+            set
+            {
+                _selectedDate = value;
+                OnPropertyChanged();
+                LoadDayData();
+            }
+        }
+
+        public ObservableCollection<MealDto> Meals
+        {
+            get => _meals;
+            set { _meals = value; OnPropertyChanged(); }
+        }
+
         // Команды
         public ICommand AddProductCommand { get; }
-        public ICommand ClearDataCommand { get; }
+        public ICommand ClearDayCommand { get; }
         public ICommand SaveToDatabaseCommand { get; }
-        public ICommand LoadTodayDataCommand { get; }
+        public ICommand PreviousDayCommand { get; }
+        public ICommand NextDayCommand { get; }
+        public ICommand TodayCommand { get; }
 
         public DailyNutritionViewModel(MainViewModel mainViewModel, User currentUser)
         {
@@ -63,14 +84,17 @@ namespace NutriPlanner.ViewModels
             _context = new DatabaseContext();
             _currentUser = currentUser;
 
-            _nutritionData = new DailyNutritionDto();
-            _availableProducts = new ObservableCollection<ProductDto>();
+            DailyNutrition = new DailyNutritionDto();
+            AvailableProducts = new ObservableCollection<ProductDto>();
+            Meals = new ObservableCollection<MealDto>();
 
             // Инициализация команд
             AddProductCommand = new RelayCommand(AddProduct, CanAddProduct);
-            ClearDataCommand = new RelayCommand(ClearData);
+            ClearDayCommand = new RelayCommand(ClearDay);
             SaveToDatabaseCommand = new RelayCommand(SaveToDatabase);
-            LoadTodayDataCommand = new RelayCommand(LoadTodayData);
+            PreviousDayCommand = new RelayCommand(PreviousDay);
+            NextDayCommand = new RelayCommand(NextDay);
+            TodayCommand = new RelayCommand(() => SelectedDate = DateTime.Today);
 
             InitializeData();
         }
@@ -83,13 +107,15 @@ namespace NutriPlanner.ViewModels
             try
             {
                 await LoadProductsFromDatabase();
-                LoadTodayData();
+                LoadDayData();
                 InitializeTargets();
                 _mainViewModel.UpdateStatus("Дневник загружен");
             }
             catch (Exception ex)
             {
                 _mainViewModel.UpdateStatus($"Ошибка загрузки: {ex.Message}");
+                MessageBox.Show($"Ошибка загрузки дневника: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -98,82 +124,113 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private async Task LoadProductsFromDatabase()
         {
-            var products = await _context.Products.ToListAsync();
-            AvailableProducts.Clear();
-
-            foreach (var product in products)
+            try
             {
-                AvailableProducts.Add(new ProductDto
-                {
-                    ProductId = product.ProductId,
-                    ProductName = product.ProductName,
-                    Category = product.Category,
-                    Calories = product.Calories,
-                    Protein = product.Protein,
-                    Fat = product.Fat,
-                    Carbohydrates = product.Carbohydrates,
-                    Unit = product.Unit
-                });
-            }
+                var products = await _context.Products
+                    .OrderBy(p => p.ProductName)
+                    .ToListAsync();
 
-            if (AvailableProducts.Any())
-                SelectedProduct = AvailableProducts.First();
+                AvailableProducts.Clear();
+
+                foreach (var product in products)
+                {
+                    AvailableProducts.Add(new ProductDto
+                    {
+                        ProductId = product.ProductId,
+                        ProductName = product.ProductName,
+                        Category = product.Category,
+                        Calories = product.Calories,
+                        Protein = product.Protein,
+                        Fat = product.Fat,
+                        Carbohydrates = product.Carbohydrates,
+                        Unit = product.Unit
+                    });
+                }
+
+                if (AvailableProducts.Any())
+                    SelectedProduct = AvailableProducts.First();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки продуктов: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         /// <summary>
-        /// Загружает сегодняшние записи пользователя
+        /// Загружает данные за выбранный день
         /// </summary>
-        private void LoadTodayData()
+        private async void LoadDayData()
         {
             try
             {
-                var todayEntries = _context.FoodDiaries
+                Meals.Clear();
+                DailyNutrition = new DailyNutritionDto();
+
+                // Загружаем записи за выбранный день
+                var dayEntries = await _context.FoodDiaries
                     .Include(fd => fd.Product)
                     .Where(fd => fd.UserId == _currentUser.UserId &&
-                                fd.Date.Date == DateTime.Today)
-                    .ToList();
+                                fd.Date.Date == SelectedDate.Date)
+                    .OrderBy(fd => fd.Date)
+                    .ToListAsync();
 
-                NutritionData = new DailyNutritionDto();
-                NutritionData.Meals.Clear();
+                decimal totalCalories = 0;
+                decimal totalProtein = 0;
+                decimal totalFat = 0;
+                decimal totalCarbs = 0;
 
-                foreach (var entry in todayEntries)
+                foreach (var entry in dayEntries)
                 {
-                    NutritionData.TotalCalories += entry.Calories;
-                    NutritionData.TotalProtein += entry.Protein;
-                    NutritionData.TotalFat += entry.Fat;
-                    NutritionData.TotalCarbs += entry.Carbohydrates;
-
-                    NutritionData.Meals.Add(new MealDto
+                    var meal = new MealDto
                     {
                         MealName = entry.Product?.ProductName ?? "Неизвестный продукт",
                         Calories = entry.Calories,
                         Protein = entry.Protein,
                         Fat = entry.Fat,
                         Carbs = entry.Carbohydrates,
-                        MealTime = entry.Date
-                    });
+                        MealTime = entry.Date,
+                        Quantity = entry.Quantity
+                    };
+
+                    Meals.Add(meal);
+
+                    totalCalories += entry.Calories;
+                    totalProtein += entry.Protein;
+                    totalFat += entry.Fat;
+                    totalCarbs += entry.Carbohydrates;
                 }
 
+                // Обновляем общие показатели
+                DailyNutrition.TotalCalories = totalCalories;
+                DailyNutrition.TotalProtein = totalProtein;
+                DailyNutrition.TotalFat = totalFat;
+                DailyNutrition.TotalCarbs = totalCarbs;
+
+                // Инициализируем цели из профиля пользователя
+                InitializeTargets();
+
+                // Рассчитываем прогресс
                 UpdateProgress();
-                _mainViewModel.UpdateStatus($"Загружено {todayEntries.Count} записей за сегодня");
+
+                _mainViewModel.UpdateStatus($"Загружено {Meals.Count} записей за {SelectedDate:dd.MM.yyyy}");
             }
             catch (Exception ex)
             {
-                _mainViewModel.UpdateStatus($"Ошибка загрузки: {ex.Message}");
+                MessageBox.Show($"Ошибка загрузки данных: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
-        /// Инициализирует целевые показатели из профиля пользователя
+        /// Инициализирует целевые показатели
         /// </summary>
         private void InitializeTargets()
         {
-            NutritionData.TargetCalories = _currentUser.DailyCalorieTarget;
-            NutritionData.TargetProtein = _currentUser.DailyProteinTarget;
-            NutritionData.TargetFat = _currentUser.DailyFatTarget;
-            NutritionData.TargetCarbs = _currentUser.DailyCarbsTarget;
-
-            UpdateProgress();
+            DailyNutrition.TargetCalories = _currentUser.DailyCalorieTarget;
+            DailyNutrition.TargetProtein = _currentUser.DailyProteinTarget;
+            DailyNutrition.TargetFat = _currentUser.DailyFatTarget;
+            DailyNutrition.TargetCarbs = _currentUser.DailyCarbsTarget;
         }
 
         /// <summary>
@@ -181,25 +238,25 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private void UpdateProgress()
         {
-            if (NutritionData.TargetCalories > 0)
-                NutritionData.CaloriesProgress = Math.Round((NutritionData.TotalCalories / NutritionData.TargetCalories) * 100, 1);
+            if (DailyNutrition.TargetCalories > 0)
+                DailyNutrition.CaloriesProgress = Math.Round((DailyNutrition.TotalCalories / DailyNutrition.TargetCalories) * 100, 1);
 
-            if (NutritionData.TargetProtein > 0)
-                NutritionData.ProteinProgress = Math.Round((NutritionData.TotalProtein / NutritionData.TargetProtein) * 100, 1);
+            if (DailyNutrition.TargetProtein > 0)
+                DailyNutrition.ProteinProgress = Math.Round((DailyNutrition.TotalProtein / DailyNutrition.TargetProtein) * 100, 1);
 
-            if (NutritionData.TargetFat > 0)
-                NutritionData.FatProgress = Math.Round((NutritionData.TotalFat / NutritionData.TargetFat) * 100, 1);
+            if (DailyNutrition.TargetFat > 0)
+                DailyNutrition.FatProgress = Math.Round((DailyNutrition.TotalFat / DailyNutrition.TargetFat) * 100, 1);
 
-            if (NutritionData.TargetCarbs > 0)
-                NutritionData.CarbsProgress = Math.Round((NutritionData.TotalCarbs / NutritionData.TargetCarbs) * 100, 1);
+            if (DailyNutrition.TargetCarbs > 0)
+                DailyNutrition.CarbsProgress = Math.Round((DailyNutrition.TotalCarbs / DailyNutrition.TargetCarbs) * 100, 1);
         }
 
         /// <summary>
-        /// Добавляет продукт в дневник питания
+        /// Добавляет продукт в дневник
         /// </summary>
-        private void AddProduct()
+        private async void AddProduct()
         {
-            if (SelectedProduct == null) return;
+            if (SelectedProduct == null || ProductQuantity <= 0) return;
 
             try
             {
@@ -209,74 +266,75 @@ namespace NutriPlanner.ViewModels
                 var fat = Math.Round(SelectedProduct.Fat * multiplier, 2);
                 var carbs = Math.Round(SelectedProduct.Carbohydrates * multiplier, 2);
 
-                // Обновляем общие показатели
-                NutritionData.TotalCalories += calories;
-                NutritionData.TotalProtein += protein;
-                NutritionData.TotalFat += fat;
-                NutritionData.TotalCarbs += carbs;
-
-                // Добавляем запись в список приемов пищи
-                NutritionData.Meals.Add(new MealDto
+                // Создаем запись в дневнике
+                var foodEntry = new FoodDiary
                 {
-                    MealName = $"{SelectedProduct.ProductName} ({ProductQuantity}г)",
+                    UserId = _currentUser.UserId,
+                    Date = DateTime.Now,
+                    ProductId = SelectedProduct.ProductId,
+                    Quantity = ProductQuantity,
                     Calories = calories,
                     Protein = protein,
                     Fat = fat,
-                    Carbs = carbs,
-                    MealTime = DateTime.Now
-                });
-
-                UpdateProgress();
-                OnPropertyChanged(nameof(NutritionData));
-
-                _mainViewModel.UpdateStatus($"Добавлен: {SelectedProduct.ProductName}");
-            }
-            catch (Exception ex)
-            {
-                _mainViewModel.UpdateStatus($"Ошибка: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Сохраняет данные в базу данных
-        /// </summary>
-        private async void SaveToDatabase()
-        {
-            try
-            {
-                var foodEntry = new FoodDiary
-                {
-                    Date = DateTime.Now,
-                    ProductId = SelectedProduct?.ProductId,
-                    Quantity = ProductQuantity,
-                    Calories = NutritionData.TotalCalories,
-                    Protein = NutritionData.TotalProtein,
-                    Fat = NutritionData.TotalFat,
-                    Carbohydrates = NutritionData.TotalCarbs,
-                    UserId = _currentUser.UserId // Только свой ID!
+                    Carbohydrates = carbs
                 };
 
                 await _context.FoodDiaries.AddAsync(foodEntry);
                 await _context.SaveChangesAsync();
 
-                _mainViewModel.UpdateStatus("Данные сохранены в дневник");
+                // Обновляем отображение
+                LoadDayData();
+
+                _mainViewModel.UpdateStatus($"Добавлен: {SelectedProduct.ProductName} ({ProductQuantity}г)");
             }
             catch (Exception ex)
             {
-                _mainViewModel.UpdateStatus($"Ошибка сохранения: {ex.Message}");
+                MessageBox.Show($"Ошибка добавления продукта: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
-        /// Очищает данные дневника (только на клиенте, не в БД)
+        /// Сохраняет текущее состояние (уже не нужно, так как сохраняется при добавлении)
         /// </summary>
-        private void ClearData()
+        private void SaveToDatabase()
         {
-            NutritionData = new DailyNutritionDto();
-            InitializeTargets();
-            OnPropertyChanged(nameof(NutritionData));
-            _mainViewModel.UpdateStatus("Дневник очищен");
+            _mainViewModel.UpdateStatus("Данные автоматически сохраняются при добавлении");
         }
+
+        /// <summary>
+        /// Очищает все записи за выбранный день
+        /// </summary>
+        private async void ClearDay()
+        {
+            var result = MessageBox.Show($"Удалить все записи за {SelectedDate:dd.MM.yyyy}?",
+                "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    var entriesToDelete = await _context.FoodDiaries
+                        .Where(fd => fd.UserId == _currentUser.UserId &&
+                                    fd.Date.Date == SelectedDate.Date)
+                        .ToListAsync();
+
+                    _context.FoodDiaries.RemoveRange(entriesToDelete);
+                    await _context.SaveChangesAsync();
+
+                    LoadDayData();
+                    _mainViewModel.UpdateStatus($"Записи за {SelectedDate:dd.MM.yyyy} удалены");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка удаления записей: {ex.Message}",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void PreviousDay() => SelectedDate = SelectedDate.AddDays(-1);
+        private void NextDay() => SelectedDate = SelectedDate.AddDays(1);
 
         private bool CanAddProduct() => SelectedProduct != null && ProductQuantity > 0;
     }

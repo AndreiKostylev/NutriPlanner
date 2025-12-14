@@ -1,4 +1,5 @@
-﻿using NutriPlanner.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using NutriPlanner.Data;
 using NutriPlanner.Models;
 using NutriPlanner.Models.DTO;
 using System;
@@ -7,266 +8,467 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 
 namespace NutriPlanner.ViewModels
 {
+    /// <summary>
+    /// ViewModel для создания планов питания диетологом для клиентов
+    /// </summary>
     public class NutritionPlanViewModel : BaseViewModel
     {
         private readonly MainViewModel _mainVM;
         private readonly User _currentUser;
+        private readonly DatabaseContext _context;
 
-        private Product _selectedProduct;
-        private NutritionPlanItemDto _selectedPlanItem;
-        private decimal _selectedWeight = 100;
+        // Клиенты для выбора
+        private ObservableCollection<UserProfileDto> _clients;
+        private UserProfileDto _selectedClient;
 
-        private decimal _totalCalories;
-        private decimal _totalProteins;
-        private decimal _totalFats;
-        private decimal _totalCarbs;
+        // Данные для плана
+        private string _planName = "План питания";
+        private DateTime _startDate = DateTime.Today;
+        private DateTime _endDate = DateTime.Today.AddDays(7);
+        private string _status = "Активен";
 
-        private decimal _dailyCaloriesNorm;
-        private decimal _dailyProteinsNorm;
-        private decimal _dailyFatsNorm;
-        private decimal _dailyCarbsNorm;
+        // Цели плана
+        private decimal _targetCalories;
+        private decimal _targetProtein;
+        private decimal _targetFat;
+        private decimal _targetCarbs;
 
-        private string _goal = "Поддержание";
+        // Рекомендуемые блюда
+        private ObservableCollection<DishDto> _recommendedDishes;
+        private DishDto _selectedDish;
 
-        public ObservableCollection<Product> Products { get; set; }
-        public ObservableCollection<NutritionPlanItemDto> PlanItems { get; set; }
-
-        public Product SelectedProduct
+        public ObservableCollection<UserProfileDto> Clients
         {
-            get => _selectedProduct;
-            set { _selectedProduct = value; OnPropertyChanged(); }
+            get => _clients;
+            set { _clients = value; OnPropertyChanged(); }
         }
 
-        public NutritionPlanItemDto SelectedPlanItem
+        public UserProfileDto SelectedClient
         {
-            get => _selectedPlanItem;
-            set { _selectedPlanItem = value; OnPropertyChanged(); }
+            get => _selectedClient;
+            set
+            {
+                _selectedClient = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedClient));
+                if (value != null)
+                {
+                    LoadClientData();
+                    LoadRecommendedDishes();
+                }
+            }
         }
 
-        public decimal SelectedWeight
+        public string PlanName
         {
-            get => _selectedWeight;
-            set { _selectedWeight = value; OnPropertyChanged(); }
+            get => _planName;
+            set { _planName = value; OnPropertyChanged(); }
         }
 
-        public decimal TotalCalories
+        public DateTime StartDate
         {
-            get => _totalCalories;
-            set { _totalCalories = value; OnPropertyChanged(); }
+            get => _startDate;
+            set { _startDate = value; OnPropertyChanged(); }
         }
 
-        public decimal TotalProteins
+        public DateTime EndDate
         {
-            get => _totalProteins;
-            set { _totalProteins = value; OnPropertyChanged(); }
+            get => _endDate;
+            set { _endDate = value; OnPropertyChanged(); }
         }
 
-        public decimal TotalFats
+        public string Status
         {
-            get => _totalFats;
-            set { _totalFats = value; OnPropertyChanged(); }
+            get => _status;
+            set { _status = value; OnPropertyChanged(); }
         }
 
-        public decimal TotalCarbs
+        public decimal TargetCalories
         {
-            get => _totalCarbs;
-            set { _totalCarbs = value; OnPropertyChanged(); }
+            get => _targetCalories;
+            set { _targetCalories = value; OnPropertyChanged(); }
         }
 
-        public decimal DailyCaloriesNorm
+        public decimal TargetProtein
         {
-            get => _dailyCaloriesNorm;
-            set { _dailyCaloriesNorm = value; OnPropertyChanged(); }
+            get => _targetProtein;
+            set { _targetProtein = value; OnPropertyChanged(); }
         }
 
-        public decimal DailyProteinsNorm
+        public decimal TargetFat
         {
-            get => _dailyProteinsNorm;
-            set { _dailyProteinsNorm = value; OnPropertyChanged(); }
+            get => _targetFat;
+            set { _targetFat = value; OnPropertyChanged(); }
         }
 
-        public decimal DailyFatsNorm
+        public decimal TargetCarbs
         {
-            get => _dailyFatsNorm;
-            set { _dailyFatsNorm = value; OnPropertyChanged(); }
+            get => _targetCarbs;
+            set { _targetCarbs = value; OnPropertyChanged(); }
         }
 
-        public decimal DailyCarbsNorm
+        public ObservableCollection<DishDto> RecommendedDishes
         {
-            get => _dailyCarbsNorm;
-            set { _dailyCarbsNorm = value; OnPropertyChanged(); }
+            get => _recommendedDishes;
+            set { _recommendedDishes = value; OnPropertyChanged(); }
         }
 
-        public string Goal
+        public DishDto SelectedDish
         {
-            get => _goal;
-            set { _goal = value; OnPropertyChanged(); RecalculateNorms(); }
+            get => _selectedDish;
+            set { _selectedDish = value; OnPropertyChanged(); }
         }
 
-        public ICommand AddProductCommand { get; }
-        public ICommand RemoveProductCommand { get; }
-        public ICommand SavePlanCommand { get; }
+        public bool HasSelectedClient => SelectedClient != null;
+
+        // Команды
+        public ICommand LoadClientsCommand { get; }
+        public ICommand CreatePlanCommand { get; }
+        public ICommand CalculateTargetsCommand { get; }
+        public ICommand AddDishToPlanCommand { get; }
+        public ICommand RemoveDishFromPlanCommand { get; }
+        public ICommand GenerateMealPlanCommand { get; }
 
         public NutritionPlanViewModel(MainViewModel mainVM, User currentUser)
         {
             _mainVM = mainVM;
             _currentUser = currentUser;
+            _context = new DatabaseContext();
 
-            Products = new ObservableCollection<Product>();
-            PlanItems = new ObservableCollection<NutritionPlanItemDto>();
+            Clients = new ObservableCollection<UserProfileDto>();
+            RecommendedDishes = new ObservableCollection<DishDto>();
 
-            AddProductCommand = new RelayCommand(AddProduct);
-            RemoveProductCommand = new RelayCommand(RemoveProduct);
-            SavePlanCommand = new RelayCommand(SavePlan, CanSavePlan);
+            LoadClientsCommand = new RelayCommand(LoadClients);
+            CreatePlanCommand = new RelayCommand(CreatePlan, () => HasSelectedClient && !string.IsNullOrWhiteSpace(PlanName));
+            CalculateTargetsCommand = new RelayCommand(CalculateTargets, () => HasSelectedClient);
+            AddDishToPlanCommand = new RelayCommand(AddDishToPlan, () => SelectedDish != null);
+            RemoveDishFromPlanCommand = new RelayCommand(RemoveDishFromPlan, () => SelectedDish != null);
+            GenerateMealPlanCommand = new RelayCommand(GenerateMealPlan, () => HasSelectedClient);
 
-            // Инициализация из данных пользователя
-            if (currentUser != null)
+            // Загружаем клиентов только если это диетолог
+            if (currentUser.IsDietitianOrAdmin())
             {
-                Goal = currentUser.Goal;
-                DailyCaloriesNorm = currentUser.DailyCalorieTarget;
-                DailyProteinsNorm = currentUser.DailyProteinTarget;
-                DailyFatsNorm = currentUser.DailyFatTarget;
-                DailyCarbsNorm = currentUser.DailyCarbsTarget;
+                LoadClients();
             }
-
-            LoadProducts();
-            RecalculateNorms();
         }
 
         /// <summary>
-        /// Загружаем продукты из базы данных
+        /// Загружает список клиентов для диетолога
         /// </summary>
-        private void LoadProducts()
+        private async void LoadClients()
         {
             try
             {
-                using var db = new DatabaseContext();
-                var all = db.Products.ToList();
-
-                Products.Clear();
-                foreach (var p in all)
-                    Products.Add(p);
-
-                _mainVM.UpdateStatus($"Загружено {Products.Count} продуктов");
-            }
-            catch (Exception ex)
-            {
-                _mainVM.UpdateStatus($"Ошибка загрузки продуктов: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Добавление продукта в план
-        /// </summary>
-        private void AddProduct()
-        {
-            if (SelectedProduct == null || SelectedWeight <= 0)
-                return;
-
-            var item = new NutritionPlanItemDto
-            {
-                ProductName = SelectedProduct.ProductName,
-                Weight = SelectedWeight,
-                Calories = SelectedProduct.Calories * SelectedWeight / 100,
-                Proteins = SelectedProduct.Protein * SelectedWeight / 100,
-                Fats = SelectedProduct.Fat * SelectedWeight / 100,
-                Carbs = SelectedProduct.Carbohydrates * SelectedWeight / 100
-            };
-
-            PlanItems.Add(item);
-            UpdateTotals();
-            _mainVM.UpdateStatus($"Добавлено: {SelectedProduct.ProductName} ({SelectedWeight} г)");
-        }
-
-        private void RemoveProduct()
-        {
-            if (SelectedPlanItem == null)
-                return;
-
-            PlanItems.Remove(SelectedPlanItem);
-            UpdateTotals();
-            _mainVM.UpdateStatus("Продукт удалён из плана");
-        }
-
-        private void UpdateTotals()
-        {
-            TotalCalories = PlanItems.Sum(i => i.Calories);
-            TotalProteins = PlanItems.Sum(i => i.Proteins);
-            TotalFats = PlanItems.Sum(i => i.Fats);
-            TotalCarbs = PlanItems.Sum(i => i.Carbs);
-        }
-
-        /// <summary>
-        /// Автоматический расчёт норм
-        /// </summary>
-        private void RecalculateNorms()
-        {
-            if (_currentUser != null)
-            {
-                DailyCaloriesNorm = _currentUser.DailyCalorieTarget;
-                DailyProteinsNorm = _currentUser.DailyProteinTarget;
-                DailyFatsNorm = _currentUser.DailyFatTarget;
-                DailyCarbsNorm = _currentUser.DailyCarbsTarget;
-            }
-            else
-            {
-                DailyCaloriesNorm = Goal switch
+                if (!_currentUser.IsDietitianOrAdmin())
                 {
-                    "Похудение" => 1800,
-                    "Набор массы" => 2700,
-                    _ => 2200,
-                };
-
-                DailyProteinsNorm = DailyCaloriesNorm * 0.30m / 4;
-                DailyFatsNorm = DailyCaloriesNorm * 0.25m / 9;
-                DailyCarbsNorm = DailyCaloriesNorm * 0.45m / 4;
-            }
-
-            _mainVM.UpdateStatus("Нормы обновлены");
-        }
-
-        /// <summary>
-        /// Сохраняет план питания в базу данных
-        /// </summary>
-        private void SavePlan()
-        {
-            try
-            {
-                if (_currentUser == null)
-                {
-                    _mainVM.UpdateStatus("Ошибка: пользователь не авторизован");
+                    MessageBox.Show("У вас нет прав для создания планов питания",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                using var db = new DatabaseContext();
-                var plan = new NutritionPlan
+                Clients.Clear();
+
+                var clients = await _context.Users
+                    .Include(u => u.Role)
+                    .Where(u => u.Role.RoleName == "User" && u.IsActive)
+                    .OrderBy(u => u.Username)
+                    .ToListAsync();
+
+                foreach (var client in clients)
                 {
-                    UserId = _currentUser.UserId,
-                    PlanName = $"План от {DateTime.Now:dd.MM.yyyy}",
-                    StartDate = DateTime.Today,
-                    EndDate = DateTime.Today.AddDays(7),
-                    DailyCalories = DailyCaloriesNorm,
-                    DailyProtein = DailyProteinsNorm,
-                    DailyFat = DailyFatsNorm,
-                    DailyCarbohydrates = DailyCarbsNorm,
-                    Status = "Активен"
-                };
+                    Clients.Add(new UserProfileDto
+                    {
+                        UserId = client.UserId,
+                        Username = client.Username,
+                        Email = client.Email,
+                        Age = client.Age,
+                        Gender = client.Gender,
+                        Height = client.Height,
+                        Weight = client.Weight,
+                        ActivityLevel = client.ActivityLevel,
+                        Goal = client.Goal,
+                        DailyCalorieTarget = client.DailyCalorieTarget,
+                        DailyProteinTarget = client.DailyProteinTarget,
+                        DailyFatTarget = client.DailyFatTarget,
+                        DailyCarbsTarget = client.DailyCarbsTarget
+                    });
+                }
 
-                db.NutritionPlans.Add(plan);
-                db.SaveChanges();
+                if (Clients.Any())
+                {
+                    SelectedClient = Clients.First();
+                }
 
-                _mainVM.UpdateStatus("План питания сохранён");
+                _mainVM.UpdateStatus($"Загружено {Clients.Count} клиентов");
             }
             catch (Exception ex)
             {
-                _mainVM.UpdateStatus($"Ошибка сохранения плана: {ex.Message}");
+                _mainVM.UpdateStatus($"Ошибка загрузки клиентов: {ex.Message}");
+                MessageBox.Show($"Ошибка загрузки клиентов: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private bool CanSavePlan() => _currentUser != null && PlanItems.Count > 0;
+        /// <summary>
+        /// Загружает данные выбранного клиента
+        /// </summary>
+        private void LoadClientData()
+        {
+            if (SelectedClient == null) return;
+
+            // Используем цели клиента как базовые
+            TargetCalories = SelectedClient.DailyCalorieTarget;
+            TargetProtein = SelectedClient.DailyProteinTarget;
+            TargetFat = SelectedClient.DailyFatTarget;
+            TargetCarbs = SelectedClient.DailyCarbsTarget;
+
+            PlanName = $"План для {SelectedClient.Username}";
+
+            _mainVM.UpdateStatus($"Загружены данные клиента: {SelectedClient.Username}");
+        }
+
+        /// <summary>
+        /// Загружает рекомендованные блюда для плана
+        /// </summary>
+        private async void LoadRecommendedDishes()
+        {
+            try
+            {
+                RecommendedDishes.Clear();
+
+                if (SelectedClient == null) return;
+
+                // Загружаем блюда диетолога для рекомендаций
+                var dishes = await _context.Dishes
+                    .Include(d => d.DishProducts)
+                    .ThenInclude(dp => dp.Product)
+                    .Where(d => d.UserId == _currentUser.UserId) // Блюда созданные диетологом
+                    .OrderBy(d => d.TotalCalories)
+                    .Take(8) // Ограничиваем количество
+                    .ToListAsync();
+
+                foreach (var dish in dishes)
+                {
+                    var dishDto = new DishDto
+                    {
+                        DishId = dish.DishId,
+                        DishName = dish.DishName,
+                        TotalCalories = dish.TotalCalories,
+                        TotalProtein = dish.TotalProtein,
+                        TotalFat = dish.TotalFat,
+                        TotalCarbohydrates = dish.TotalCarbohydrates,
+                        Recipe = "Рекомендовано диетологом"
+                    };
+
+                    // Добавляем ингредиенты
+                    foreach (var ingredient in dish.DishProducts)
+                    {
+                        dishDto.Ingredients.Add(new ProductDto
+                        {
+                            ProductId = ingredient.Product.ProductId,
+                            ProductName = ingredient.Product.ProductName,
+                            Category = ingredient.Product.Category,
+                            Calories = ingredient.Product.Calories,
+                            Protein = ingredient.Product.Protein,
+                            Fat = ingredient.Product.Fat,
+                            Carbohydrates = ingredient.Product.Carbohydrates,
+                            Unit = ingredient.Product.Unit,
+                            Quantity = ingredient.Quantity
+                        });
+                    }
+
+                    RecommendedDishes.Add(dishDto);
+                }
+
+                _mainVM.UpdateStatus($"Загружено {RecommendedDishes.Count} рекомендованных блюд");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки блюд: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Рассчитывает целевые показатели на основе данных клиента
+        /// </summary>
+        private void CalculateTargets()
+        {
+            if (SelectedClient == null) return;
+
+            // Используем стандартную формулу расчета
+            TargetCalories = SelectedClient.DailyCalorieTarget;
+            TargetProtein = SelectedClient.DailyProteinTarget;
+            TargetFat = SelectedClient.DailyFatTarget;
+            TargetCarbs = SelectedClient.DailyCarbsTarget;
+
+            // Можно добавить корректировку по цели клиента
+            if (SelectedClient.Goal == "Похудение")
+            {
+                TargetCalories = Math.Round(TargetCalories * 0.85m); // -15% для похудения
+            }
+            else if (SelectedClient.Goal == "Набор массы")
+            {
+                TargetCalories = Math.Round(TargetCalories * 1.15m); // +15% для набора массы
+            }
+
+            // Пересчитываем БЖУ
+            TargetProtein = Math.Round(TargetCalories * 0.3m / 4); // 30% от калорий
+            TargetFat = Math.Round(TargetCalories * 0.25m / 9); // 25% от калорий
+            TargetCarbs = Math.Round(TargetCalories * 0.45m / 4); // 45% от калорий
+
+            _mainVM.UpdateStatus($"Цели рассчитаны для клиента {SelectedClient.Username}");
+        }
+
+        /// <summary>
+        /// Добавляет блюдо в план
+        /// </summary>
+        private void AddDishToPlan()
+        {
+            if (SelectedDish == null) return;
+
+            MessageBox.Show($"Блюдо '{SelectedDish.DishName}' добавлено в план\n" +
+                          $"Калории: {SelectedDish.TotalCalories} ккал",
+                          "Блюдо добавлено", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            _mainVM.UpdateStatus($"Добавлено блюдо: {SelectedDish.DishName}");
+        }
+
+        /// <summary>
+        /// Удаляет блюдо из плана
+        /// </summary>
+        private void RemoveDishFromPlan()
+        {
+            if (SelectedDish == null) return;
+
+            MessageBox.Show($"Блюдо '{SelectedDish.DishName}' удалено из плана",
+                          "Блюдо удалено", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            _mainVM.UpdateStatus($"Удалено блюдо: {SelectedDish.DishName}");
+        }
+
+        /// <summary>
+        /// Генерирует примерный план питания
+        /// </summary>
+        private void GenerateMealPlan()
+        {
+            if (SelectedClient == null) return;
+
+            string mealPlan = $"Примерный план питания для {SelectedClient.Username}:\n\n";
+            mealPlan += $"Цели на день:\n";
+            mealPlan += $"• Калории: {TargetCalories} ккал\n";
+            mealPlan += $"• Белки: {TargetProtein} г\n";
+            mealPlan += $"• Жиры: {TargetFat} г\n";
+            mealPlan += $"• Углеводы: {TargetCarbs} г\n\n";
+
+            mealPlan += $"Рекомендуемое распределение:\n";
+            mealPlan += $"• Завтрак (25%): {Math.Round(TargetCalories * 0.25m)} ккал\n";
+            mealPlan += $"• Обед (35%): {Math.Round(TargetCalories * 0.35m)} ккал\n";
+            mealPlan += $"• Ужин (30%): {Math.Round(TargetCalories * 0.30m)} ккал\n";
+            mealPlan += $"• Перекусы (10%): {Math.Round(TargetCalories * 0.10m)} ккал\n\n";
+
+            mealPlan += $"Рекомендации:\n";
+            mealPlan += $"• Пить 2-3 литра воды в день\n";
+            mealPlan += $"• Есть каждые 3-4 часа\n";
+            mealPlan += $"• Включать овощи в каждый прием пищи\n";
+
+            MessageBox.Show(mealPlan, "Сгенерированный план питания",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+
+            _mainVM.UpdateStatus($"Сгенерирован план для {SelectedClient.Username}");
+        }
+
+        /// <summary>
+        /// Создает план питания для клиента
+        /// </summary>
+        private async void CreatePlan()
+        {
+            try
+            {
+                if (!_currentUser.IsDietitianOrAdmin())
+                {
+                    MessageBox.Show("У вас нет прав для создания планов питания",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (SelectedClient == null)
+                {
+                    MessageBox.Show("Выберите клиента для создания плана",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (EndDate <= StartDate)
+                {
+                    MessageBox.Show("Дата окончания должна быть позже даты начала",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (TargetCalories <= 0)
+                {
+                    MessageBox.Show("Укажите корректное количество калорий",
+                        "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Создаем план питания
+                var plan = new NutritionPlan
+                {
+                    UserId = SelectedClient.UserId,
+                    PlanName = PlanName,
+                    StartDate = StartDate,
+                    EndDate = EndDate,
+                    DailyCalories = TargetCalories,
+                    DailyProtein = TargetProtein,
+                    DailyFat = TargetFat,
+                    DailyCarbohydrates = TargetCarbs,
+                    Status = Status
+                };
+
+                _context.NutritionPlans.Add(plan);
+                await _context.SaveChangesAsync();
+
+                _mainVM.UpdateStatus($"Создан план '{PlanName}' для клиента {SelectedClient.Username}");
+                MessageBox.Show($"План питания успешно создан!\n\n" +
+                              $"Клиент: {SelectedClient.Username}\n" +
+                              $"Название: {PlanName}\n" +
+                              $"Период: {StartDate:dd.MM.yyyy} - {EndDate:dd.MM.yyyy}\n" +
+                              $"Калории: {TargetCalories} ккал/день\n" +
+                              $"Статус: {Status}",
+                              "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Очищаем форму
+                ClearForm();
+            }
+            catch (Exception ex)
+            {
+                _mainVM.UpdateStatus($"Ошибка создания плана: {ex.Message}");
+                MessageBox.Show($"Ошибка создания плана: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Очищает форму создания плана
+        /// </summary>
+        private void ClearForm()
+        {
+            PlanName = "Новый план питания";
+            StartDate = DateTime.Today;
+            EndDate = DateTime.Today.AddDays(7);
+            Status = "Активен";
+
+            if (SelectedClient != null)
+            {
+                LoadClientData(); // Загружаем данные клиента заново
+            }
+        }
     }
 }
