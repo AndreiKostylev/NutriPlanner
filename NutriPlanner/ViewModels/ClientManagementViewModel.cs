@@ -23,7 +23,7 @@ namespace NutriPlanner.ViewModels
     {
         private readonly MainViewModel _mainVM;
         private readonly User _currentUser;
-        private readonly DatabaseContext _context;
+        private DatabaseContext _context; 
 
         private ObservableCollection<UserProfileDto> _clients;
         private UserProfileDto _selectedClient;
@@ -59,7 +59,8 @@ namespace NutriPlanner.ViewModels
             {
                 _searchText = value;
                 OnPropertyChanged();
-                LoadClients();
+                // Используем задержку для поиска, чтобы избежать множественных запросов
+                _ = DebouncedLoadClients();
             }
         }
 
@@ -70,7 +71,7 @@ namespace NutriPlanner.ViewModels
             {
                 _selectedDate = value;
                 OnPropertyChanged();
-                LoadClientDiary();
+                _ = DebouncedLoadClientDiary();
             }
         }
 
@@ -96,10 +97,15 @@ namespace NutriPlanner.ViewModels
         public ICommand PreviousDayCommand { get; }
         public ICommand NextDayCommand { get; }
 
+        // Для управления задержкой
+        private DateTime _lastSearchTime = DateTime.MinValue;
+        private DateTime _lastDateChangeTime = DateTime.MinValue;
+
         public ClientManagementViewModel(MainViewModel mainVM, User currentUser)
         {
             _mainVM = mainVM;
             _currentUser = currentUser;
+            // Создаем контекст в конструкторе
             _context = new DatabaseContext();
 
             Clients = new ObservableCollection<UserProfileDto>();
@@ -107,7 +113,7 @@ namespace NutriPlanner.ViewModels
             ClientDiaryEntries = new ObservableCollection<FoodEntryDto>();
             ClientDailyNutrition = new DailyNutritionDto();
 
-            LoadClientsCommand = new RelayCommand(LoadClients);
+            LoadClientsCommand = new RelayCommand(() => LoadClients());
             EditClientCommand = new RelayCommand(EditClient, () => CanEditClient);
             CreatePlanForClientCommand = new RelayCommand(CreatePlanForClient, () => CanEditClient);
             ViewClientDiaryCommand = new RelayCommand(ViewClientDiary, () => CanEditClient);
@@ -121,13 +127,47 @@ namespace NutriPlanner.ViewModels
             LoadClients();
         }
 
-        private async void LoadClients()
+        /// <summary>
+        /// Загрузка списка клиентов с задержкой для предотвращения конфликтов
+        /// </summary>
+        private async Task DebouncedLoadClients()
+        {
+            _lastSearchTime = DateTime.Now;
+            await Task.Delay(300); // Задержка 300 мс
+
+            if ((DateTime.Now - _lastSearchTime).TotalMilliseconds >= 300)
+            {
+                await LoadClientsAsync();
+            }
+        }
+
+        /// <summary>
+        /// Загрузка дневника клиента с задержкой
+        /// </summary>
+        private async Task DebouncedLoadClientDiary()
+        {
+            _lastDateChangeTime = DateTime.Now;
+            await Task.Delay(200); // Задержка 200 мс
+
+            if ((DateTime.Now - _lastDateChangeTime).TotalMilliseconds >= 200)
+            {
+                await LoadClientDiaryAsync();
+            }
+        }
+
+        /// <summary>
+        /// Загрузка списка клиентов (асинхронная версия)
+        /// </summary>
+        public async Task LoadClientsAsync()
         {
             try
             {
+                // Создаем новый контекст для этой операции
+                using var context = new DatabaseContext();
+
                 Clients.Clear();
 
-                var query = _context.Users
+                var query = context.Users
                     .Include(u => u.Role)
                     .Where(u => u.Role.RoleName == "User" && u.IsActive);
 
@@ -170,15 +210,29 @@ namespace NutriPlanner.ViewModels
             }
         }
 
-        private async void LoadClientPlans()
+        /// <summary>
+        /// Загрузка списка клиентов (синхронная обертка для команд)
+        /// </summary>
+        private async void LoadClients()
+        {
+            await LoadClientsAsync();
+        }
+
+        /// <summary>
+        /// Загрузка планов клиента
+        /// </summary>
+        private async Task LoadClientPlansAsync()
         {
             try
             {
                 if (SelectedClient == null) return;
 
+                // Создаем новый контекст
+                using var context = new DatabaseContext();
+
                 ClientPlans.Clear();
 
-                var plans = await _context.NutritionPlans
+                var plans = await context.NutritionPlans
                     .Where(p => p.UserId == SelectedClient.UserId)
                     .OrderByDescending(p => p.StartDate)
                     .ToListAsync();
@@ -194,7 +248,8 @@ namespace NutriPlanner.ViewModels
                         DailyCalories = plan.DailyCalories,
                         DailyProtein = plan.DailyProtein,
                         DailyFat = plan.DailyFat,
-                        DailyCarbohydrates = plan.DailyCarbohydrates
+                        DailyCarbohydrates = plan.DailyCarbohydrates,
+                        Status = plan.Status
                     });
                 }
 
@@ -207,16 +262,30 @@ namespace NutriPlanner.ViewModels
             }
         }
 
-        private async void LoadClientDiary()
+        /// <summary>
+        /// Загрузка планов клиента (синхронная обертка)
+        /// </summary>
+        private async void LoadClientPlans()
+        {
+            await LoadClientPlansAsync();
+        }
+
+        /// <summary>
+        /// Загрузка дневника клиента (асинхронная версия)
+        /// </summary>
+        public async Task LoadClientDiaryAsync()
         {
             try
             {
                 if (SelectedClient == null) return;
 
+                // Создаем новый контекст для этой операции
+                using var context = new DatabaseContext();
+
                 ClientDiaryEntries.Clear();
                 ClientDailyNutrition = new DailyNutritionDto();
 
-                var entries = await _context.FoodDiaries
+                var entries = await context.FoodDiaries
                     .Include(fd => fd.Product)
                     .Where(fd => fd.UserId == SelectedClient.UserId &&
                                 fd.Date.Date == SelectedDate.Date)
@@ -273,6 +342,14 @@ namespace NutriPlanner.ViewModels
             }
         }
 
+        /// <summary>
+        /// Загрузка дневника клиента (синхронная обертка)
+        /// </summary>
+        private async void LoadClientDiary()
+        {
+            await LoadClientDiaryAsync();
+        }
+
         private void EditClient()
         {
             if (SelectedClient == null) return;
@@ -322,8 +399,11 @@ namespace NutriPlanner.ViewModels
 
                     if (confirm == MessageBoxResult.Yes)
                     {
+                        // Используем новый контекст для операции
+                        using var context = new DatabaseContext();
+
                         // Находим и обновляем пользователя
-                        var user = _context.Users.FirstOrDefault(u => u.UserId == SelectedClient.UserId);
+                        var user = context.Users.FirstOrDefault(u => u.UserId == SelectedClient.UserId);
                         if (user != null)
                         {
                             user.Email = newEmail;
@@ -337,7 +417,7 @@ namespace NutriPlanner.ViewModels
                             user.DailyFatTarget = CalculateDailyFat(user);
                             user.DailyCarbsTarget = CalculateDailyCarbs(user);
 
-                            _context.SaveChanges();
+                            context.SaveChanges();
 
                             // Обновляем список
                             LoadClients();
@@ -469,6 +549,9 @@ namespace NutriPlanner.ViewModels
 
                 if (confirm == MessageBoxResult.Yes)
                 {
+                    // Используем новый контекст
+                    using var context = new DatabaseContext();
+
                     var plan = new NutritionPlan
                     {
                         UserId = SelectedClient.UserId,
@@ -482,8 +565,8 @@ namespace NutriPlanner.ViewModels
                         Status = "Активен"
                     };
 
-                    _context.NutritionPlans.Add(plan);
-                    await _context.SaveChangesAsync();
+                    context.NutritionPlans.Add(plan);
+                    await context.SaveChangesAsync();
 
                     LoadClientPlans();
                     _mainVM.UpdateStatus($"Создан план питания '{planName}' для {SelectedClient.Username}");
@@ -543,11 +626,14 @@ namespace NutriPlanner.ViewModels
             {
                 try
                 {
-                    var plan = await _context.NutritionPlans.FindAsync(SelectedPlan.PlanId);
+                    // Используем новый контекст
+                    using var context = new DatabaseContext();
+
+                    var plan = await context.NutritionPlans.FindAsync(SelectedPlan.PlanId);
                     if (plan != null)
                     {
-                        _context.NutritionPlans.Remove(plan);
-                        await _context.SaveChangesAsync();
+                        context.NutritionPlans.Remove(plan);
+                        await context.SaveChangesAsync();
 
                         ClientPlans.Remove(SelectedPlan);
                         _mainVM.UpdateStatus($"План '{SelectedPlan.PlanName}' удален");
@@ -567,8 +653,11 @@ namespace NutriPlanner.ViewModels
 
             try
             {
+                // Используем новый контекст
+                using var context = new DatabaseContext();
+
                 // Деактивируем все планы клиента
-                var clientPlans = await _context.NutritionPlans
+                var clientPlans = await context.NutritionPlans
                     .Where(p => p.UserId == SelectedClient.UserId)
                     .ToListAsync();
 
@@ -578,11 +667,11 @@ namespace NutriPlanner.ViewModels
                 }
 
                 // Активируем выбранный план
-                var selectedPlan = await _context.NutritionPlans.FindAsync(SelectedPlan.PlanId);
+                var selectedPlan = await context.NutritionPlans.FindAsync(SelectedPlan.PlanId);
                 if (selectedPlan != null)
                 {
                     selectedPlan.Status = "Активен";
-                    await _context.SaveChangesAsync();
+                    await context.SaveChangesAsync();
 
                     _mainVM.UpdateStatus($"План '{selectedPlan.PlanName}' активирован");
                     LoadClientPlans();
@@ -699,7 +788,8 @@ namespace NutriPlanner.ViewModels
                              $"  Калории: {plan.DailyCalories} ккал/день\n" +
                              $"  Белки: {plan.DailyProtein} г/день\n" +
                              $"  Жиры: {plan.DailyFat} г/день\n" +
-                             $"  Углеводы: {plan.DailyCarbohydrates} г/день\n\n";
+                             $"  Углеводы: {plan.DailyCarbohydrates} г/день\n" +
+                             $"  Статус: {plan.Status}\n\n";
                 }
             }
 
@@ -743,6 +833,31 @@ namespace NutriPlanner.ViewModels
                         $"=== КОНЕЦ ОТЧЕТА ===";
 
             return report;
+        }
+
+        /// <summary>
+        /// Метод для обновления данных из других ViewModel
+        /// </summary>
+        public void RefreshData()
+        {
+            LoadClients();
+            if (SelectedClient != null)
+            {
+                LoadClientPlans();
+                LoadClientDiary();
+            }
+        }
+
+        /// <summary>
+        /// Метод для выбора клиента по ID
+        /// </summary>
+        public void SelectClientById(int clientId)
+        {
+            var client = Clients.FirstOrDefault(c => c.UserId == clientId);
+            if (client != null)
+            {
+                SelectedClient = client;
+            }
         }
     }
 }
