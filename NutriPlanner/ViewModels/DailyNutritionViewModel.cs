@@ -39,8 +39,7 @@ namespace NutriPlanner.ViewModels
         {
             "Завтрак",
             "Обед",
-            "Ужин",
-            "Перекус"
+            "Ужин"
         };
 
         // Публичное свойство для доступа из XAML
@@ -160,7 +159,6 @@ namespace NutriPlanner.ViewModels
         public MealDto BreakfastMeal => GetMealDto("Завтрак");
         public MealDto LunchMeal => GetMealDto("Обед");
         public MealDto DinnerMeal => GetMealDto("Ужин");
-        public MealDto SnackMeal => GetMealDto("Перекус");
 
         // Команды
         public ICommand AddProductToMealCommand { get; }
@@ -280,7 +278,6 @@ namespace NutriPlanner.ViewModels
                     .ToListAsync();
 
                 // Группируем по приемам пищи
-                // Если есть MealType в записи, используем его, иначе определяем по времени
                 foreach (var entry in dayEntries)
                 {
                     var mealType = GetMealTypeForEntry(entry);
@@ -319,8 +316,6 @@ namespace NutriPlanner.ViewModels
 
         private string GetMealTypeForEntry(FoodDiary entry)
         {
-            // Если в будущем добавится поле MealType в FoodDiary, можно будет использовать его
-            // Пока что определяем по времени
             return GetMealTypeByTime(entry.Date);
         }
 
@@ -328,11 +323,10 @@ namespace NutriPlanner.ViewModels
         {
             var hour = time.Hour;
 
-            // Более точное распределение по времени с учетом типичных приемов пищи
+            // Распределение по времени
             if (hour >= 6 && hour < 11) return "Завтрак";
-            if (hour >= 11 && hour < 16) return "Обед";
-            if (hour >= 16 && hour < 21) return "Ужин";
-            return "Перекус";
+            if (hour >= 11 && hour < 17) return "Обед";
+            return "Ужин"; // Все остальное время - ужин
         }
 
         private void CalculateDailySummary()
@@ -406,7 +400,6 @@ namespace NutriPlanner.ViewModels
             OnPropertyChanged(nameof(BreakfastMeal));
             OnPropertyChanged(nameof(LunchMeal));
             OnPropertyChanged(nameof(DinnerMeal));
-            OnPropertyChanged(nameof(SnackMeal));
         }
 
         private MealDto GetMealDto(string mealType)
@@ -446,7 +439,6 @@ namespace NutriPlanner.ViewModels
                 var carbs = Math.Round(product.Carbohydrates * multiplier, 2);
 
                 // Создаем время в зависимости от выбранного приема пищи
-                // Это гарантирует, что продукт попадет в правильный прием пищи
                 var entryDate = CreateTimeForMealType(SelectedMealType);
 
                 var foodEntry = new FoodDiary
@@ -513,9 +505,6 @@ namespace NutriPlanner.ViewModels
                 case "Ужин":
                     hour = 19; // 19:00 вечера
                     break;
-                case "Перекус":
-                    hour = 15; // 15:00 дня
-                    break;
                 default:
                     hour = 12; // Полдень по умолчанию
                     break;
@@ -530,6 +519,9 @@ namespace NutriPlanner.ViewModels
 
             try
             {
+                // Сохраняем имя продукта перед удалением
+                var productName = SelectedEntry.ProductName;
+
                 using var context = new DatabaseContext();
                 var dbEntry = await context.FoodDiaries.FindAsync(SelectedEntry.EntryId);
                 if (dbEntry != null)
@@ -552,7 +544,8 @@ namespace NutriPlanner.ViewModels
                     CalculateDailySummary();
                     UpdateProgress();
 
-                    _mainViewModel.UpdateStatus($"Удалена запись: {SelectedEntry.ProductName}");
+                    _mainViewModel.UpdateStatus($"Удалена запись: {productName}");
+                    // Сбрасываем выделение
                     SelectedEntry = null;
                 }
             }

@@ -274,35 +274,6 @@
                                        FontSize="10"/>
                         </StackPanel>
                     </Border>
-
-                    <!-- Перекус -->
-                    <Border BorderBrush="#9C27B0" 
-                            BorderThickness="1" 
-                            CornerRadius="5" 
-                            Padding="8" 
-                            Margin="3"
-                            MinWidth="150"
-                            MaxWidth="180">
-                        <StackPanel>
-                            <TextBlock Text="Перекус" 
-                                       FontWeight="Bold" 
-                                       HorizontalAlignment="Center"
-                                       FontSize="12"/>
-                            <TextBlock Text="{Binding SnackMeal.Calories, StringFormat={}{0:F0} ккал}" 
-                                       FontSize="14" 
-                                       HorizontalAlignment="Center" 
-                                       Margin="0,3,0,0"/>
-                            <TextBlock Text="{Binding SnackMeal.Protein, StringFormat={}Б: {0:F1} г}" 
-                                       HorizontalAlignment="Center" 
-                                       FontSize="10"/>
-                            <TextBlock Text="{Binding SnackMeal.Fat, StringFormat={}Ж: {0:F1} г}" 
-                                       HorizontalAlignment="Center" 
-                                       FontSize="10"/>
-                            <TextBlock Text="{Binding SnackMeal.Carbs, StringFormat={}У: {0:F1} г}" 
-                                       HorizontalAlignment="Center" 
-                                       FontSize="10"/>
-                        </StackPanel>
-                    </Border>
                 </WrapPanel>
             </GroupBox>
 
@@ -427,61 +398,6 @@
 
                         <DataGrid Grid.Row="0" 
                                   ItemsSource="{Binding MealEntries[Ужин]}"
-                                  SelectedItem="{Binding SelectedEntry}"
-                                  AutoGenerateColumns="False" 
-                                  CanUserAddRows="False"
-                                  IsReadOnly="True"
-                                  MinHeight="150"
-                                  MaxHeight="300">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Продукт" 
-                                                    Binding="{Binding ProductName}" 
-                                                    Width="*"
-                                                    MinWidth="120"/>
-                                <DataGridTextColumn Header="Кол-во" 
-                                                    Binding="{Binding Quantity, StringFormat={}{0} г}" 
-                                                    Width="80"
-                                                    MinWidth="60"/>
-                                <DataGridTextColumn Header="Ккал" 
-                                                    Binding="{Binding Calories, StringFormat={}{0:F0}}" 
-                                                    Width="60"
-                                                    MinWidth="50"/>
-                                <DataGridTextColumn Header="Б" 
-                                                    Binding="{Binding Protein, StringFormat={}{0:F1} г}" 
-                                                    Width="60"
-                                                    MinWidth="50"/>
-                                <DataGridTextColumn Header="Ж" 
-                                                    Binding="{Binding Fat, StringFormat={}{0:F1} г}" 
-                                                    Width="60"
-                                                    MinWidth="50"/>
-                                <DataGridTextColumn Header="У" 
-                                                    Binding="{Binding Carbohydrates, StringFormat={}{0:F1} г}" 
-                                                    Width="60"
-                                                    MinWidth="50"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                        <Button Grid.Row="1" 
-                                Content="Удалить выбранную запись" 
-                                Command="{Binding RemoveEntryCommand}"
-                                Margin="5" 
-                                Padding="8,4"
-                                HorizontalAlignment="Right"
-                                Background="#F44336"
-                                Foreground="White"
-                                MinWidth="140"/>
-                    </Grid>
-                </TabItem>
-
-                <TabItem Header="Перекус">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <DataGrid Grid.Row="0" 
-                                  ItemsSource="{Binding MealEntries[Перекус]}"
                                   SelectedItem="{Binding SelectedEntry}"
                                   AutoGenerateColumns="False" 
                                   CanUserAddRows="False"
