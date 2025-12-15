@@ -20,13 +20,13 @@ namespace NutriPlanner.ViewModels
     {
         private readonly MainViewModel _mainVM;
         private readonly User _currentUser;
-        private readonly DatabaseContext _context;
 
         private ObservableCollection<NutritionPlanDto> _plans;
         private NutritionPlanDto _selectedPlan;
-        private ObservableCollection<MealDto> _todayMeals;
+        private ObservableCollection<FoodEntryDto> _todayMeals;
         private DailyNutritionDto _dailyProgress;
         private DateTime _selectedDate = DateTime.Today;
+        private bool _isLoading;
 
         public ObservableCollection<NutritionPlanDto> Plans
         {
@@ -45,12 +45,11 @@ namespace NutriPlanner.ViewModels
                 if (value != null)
                 {
                     LoadTodayMeals();
-                    CalculateProgress();
                 }
             }
         }
 
-        public ObservableCollection<MealDto> TodayMeals
+        public ObservableCollection<FoodEntryDto> TodayMeals
         {
             get => _todayMeals;
             set { _todayMeals = value; OnPropertyChanged(); }
@@ -70,8 +69,13 @@ namespace NutriPlanner.ViewModels
                 _selectedDate = value;
                 OnPropertyChanged();
                 LoadTodayMeals();
-                CalculateProgress();
             }
+        }
+
+        public bool IsLoading
+        {
+            get => _isLoading;
+            set { _isLoading = value; OnPropertyChanged(); }
         }
 
         public bool HasSelectedPlan => SelectedPlan != null;
@@ -81,7 +85,7 @@ namespace NutriPlanner.ViewModels
         {
             get
             {
-                if (Plans == null) return null;
+                if (Plans == null || !Plans.Any()) return null;
                 return Plans.FirstOrDefault(p =>
                     p.Status == "Активен" &&
                     DateTime.Today >= p.StartDate &&
@@ -96,15 +100,15 @@ namespace NutriPlanner.ViewModels
         public ICommand TodayCommand { get; }
         public ICommand ExportPlanCommand { get; }
         public ICommand ViewPlanDetailsCommand { get; }
+        public ICommand RefreshCommand { get; }
 
         public UserPlanViewViewModel(MainViewModel mainVM, User currentUser)
         {
             _mainVM = mainVM;
             _currentUser = currentUser;
-            _context = new DatabaseContext();
 
             Plans = new ObservableCollection<NutritionPlanDto>();
-            TodayMeals = new ObservableCollection<MealDto>();
+            TodayMeals = new ObservableCollection<FoodEntryDto>();
             DailyProgress = new DailyNutritionDto();
 
             LoadPlansCommand = new RelayCommand(LoadPlans);
@@ -113,20 +117,35 @@ namespace NutriPlanner.ViewModels
             TodayCommand = new RelayCommand(() => SelectedDate = DateTime.Today);
             ExportPlanCommand = new RelayCommand(ExportPlan, () => HasSelectedPlan);
             ViewPlanDetailsCommand = new RelayCommand(ViewPlanDetails, () => HasSelectedPlan);
+            RefreshCommand = new RelayCommand(RefreshData);
 
             LoadPlans();
         }
 
         /// <summary>
-        /// Загружает планы питания пользователя
+        /// Обновляет все данные
         /// </summary>
-        private async void LoadPlans()
+        public async void RefreshData()
+        {
+            await LoadPlansAsync();
+            LoadTodayMeals();
+        }
+
+        /// <summary>
+        /// Загружает планы питания пользователя (асинхронная версия)
+        /// </summary>
+        public async Task LoadPlansAsync()
         {
             try
             {
+                IsLoading = true;
+
+                // Используем новый контекст
+                using var context = new DatabaseContext();
+
                 Plans.Clear();
 
-                var plans = await _context.NutritionPlans
+                var plans = await context.NutritionPlans
                     .Where(p => p.UserId == _currentUser.UserId)
                     .OrderByDescending(p => p.StartDate)
                     .ToListAsync();
@@ -144,7 +163,6 @@ namespace NutriPlanner.ViewModels
                         DailyFat = plan.DailyFat,
                         DailyCarbohydrates = plan.DailyCarbohydrates,
                         Status = plan.Status
-                        // CreatedBy уже имеет значение по умолчанию "Диетолог"
                     };
 
                     Plans.Add(planDto);
@@ -155,8 +173,15 @@ namespace NutriPlanner.ViewModels
                     var active = ActivePlan;
                     SelectedPlan = active ?? Plans.First();
                 }
+                else
+                {
+                    SelectedPlan = null;
+                    DailyProgress = new DailyNutritionDto();
+                    OnPropertyChanged(nameof(DailyProgress));
+                }
 
                 _mainVM.UpdateStatus($"Загружено {Plans.Count} планов питания");
+                OnPropertyChanged(nameof(ActivePlan));
             }
             catch (Exception ex)
             {
@@ -164,6 +189,18 @@ namespace NutriPlanner.ViewModels
                 MessageBox.Show($"Ошибка загрузки планов: {ex.Message}",
                     "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Загружает планы питания пользователя (синхронная обертка)
+        /// </summary>
+        private async void LoadPlans()
+        {
+            await LoadPlansAsync();
         }
 
         /// <summary>
@@ -173,11 +210,16 @@ namespace NutriPlanner.ViewModels
         {
             try
             {
+                IsLoading = true;
+
+                // Используем новый контекст
+                using var context = new DatabaseContext();
+
                 TodayMeals.Clear();
 
                 if (_currentUser == null) return;
 
-                var entries = await _context.FoodDiaries
+                var entries = await context.FoodDiaries
                     .Include(fd => fd.Product)
                     .Where(fd => fd.UserId == _currentUser.UserId &&
                                 fd.Date.Date == SelectedDate.Date)
@@ -186,17 +228,21 @@ namespace NutriPlanner.ViewModels
 
                 foreach (var entry in entries)
                 {
-                    TodayMeals.Add(new MealDto
+                    TodayMeals.Add(new FoodEntryDto
                     {
-                        MealName = entry.Product?.ProductName ?? "Неизвестный продукт",
+                        EntryId = entry.DiaryId,
+                        Date = entry.Date,
+                        ProductName = entry.Product?.ProductName ?? "Неизвестный продукт",
+                        Quantity = entry.Quantity,
                         Calories = entry.Calories,
                         Protein = entry.Protein,
                         Fat = entry.Fat,
-                        Carbs = entry.Carbohydrates,
-                        MealTime = entry.Date,
-                        Quantity = entry.Quantity
+                        Carbohydrates = entry.Carbohydrates
                     });
                 }
+
+                // Рассчитываем прогресс после загрузки данных
+                CalculateProgress();
 
                 OnPropertyChanged(nameof(TodayMeals));
             }
@@ -205,6 +251,10 @@ namespace NutriPlanner.ViewModels
                 MessageBox.Show($"Ошибка загрузки приемов пищи: {ex.Message}", "Ошибка",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                IsLoading = false;
+            }
         }
 
         /// <summary>
@@ -212,33 +262,60 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private void CalculateProgress()
         {
-            if (SelectedPlan == null) return;
+            if (SelectedPlan == null)
+            {
+                // Если нет выбранного плана, используем цели из профиля пользователя
+                DailyProgress = new DailyNutritionDto
+                {
+                    TotalCalories = TodayMeals.Sum(m => m.Calories),
+                    TotalProtein = TodayMeals.Sum(m => m.Protein),
+                    TotalFat = TodayMeals.Sum(m => m.Fat),
+                    TotalCarbs = TodayMeals.Sum(m => m.Carbohydrates),
+                    TargetCalories = _currentUser?.DailyCalorieTarget ?? 0,
+                    TargetProtein = _currentUser?.DailyProteinTarget ?? 0,
+                    TargetFat = _currentUser?.DailyFatTarget ?? 0,
+                    TargetCarbs = _currentUser?.DailyCarbsTarget ?? 0
+                };
+            }
+            else
+            {
+                // Используем цели из выбранного плана
+                decimal totalCalories = TodayMeals.Sum(m => m.Calories);
+                decimal totalProtein = TodayMeals.Sum(m => m.Protein);
+                decimal totalFat = TodayMeals.Sum(m => m.Fat);
+                decimal totalCarbs = TodayMeals.Sum(m => m.Carbohydrates);
 
-            decimal totalCalories = TodayMeals.Sum(m => m.Calories);
-            decimal totalProtein = TodayMeals.Sum(m => m.Protein);
-            decimal totalFat = TodayMeals.Sum(m => m.Fat);
-            decimal totalCarbs = TodayMeals.Sum(m => m.Carbs);
+                DailyProgress.TotalCalories = totalCalories;
+                DailyProgress.TotalProtein = totalProtein;
+                DailyProgress.TotalFat = totalFat;
+                DailyProgress.TotalCarbs = totalCarbs;
 
-            DailyProgress.TotalCalories = totalCalories;
-            DailyProgress.TotalProtein = totalProtein;
-            DailyProgress.TotalFat = totalFat;
-            DailyProgress.TotalCarbs = totalCarbs;
-
-            // Устанавливаем цели из выбранного плана
-            DailyProgress.TargetCalories = SelectedPlan.DailyCalories;
-            DailyProgress.TargetProtein = SelectedPlan.DailyProtein;
-            DailyProgress.TargetFat = SelectedPlan.DailyFat;
-            DailyProgress.TargetCarbs = SelectedPlan.DailyCarbohydrates;
+                DailyProgress.TargetCalories = SelectedPlan.DailyCalories;
+                DailyProgress.TargetProtein = SelectedPlan.DailyProtein;
+                DailyProgress.TargetFat = SelectedPlan.DailyFat;
+                DailyProgress.TargetCarbs = SelectedPlan.DailyCarbohydrates;
+            }
 
             // Рассчитываем прогресс
             if (DailyProgress.TargetCalories > 0)
-                DailyProgress.CaloriesProgress = Math.Round((totalCalories / DailyProgress.TargetCalories) * 100, 1);
+                DailyProgress.CaloriesProgress = Math.Round((DailyProgress.TotalCalories / DailyProgress.TargetCalories) * 100, 1);
+            else
+                DailyProgress.CaloriesProgress = 0;
+
             if (DailyProgress.TargetProtein > 0)
-                DailyProgress.ProteinProgress = Math.Round((totalProtein / DailyProgress.TargetProtein) * 100, 1);
+                DailyProgress.ProteinProgress = Math.Round((DailyProgress.TotalProtein / DailyProgress.TargetProtein) * 100, 1);
+            else
+                DailyProgress.ProteinProgress = 0;
+
             if (DailyProgress.TargetFat > 0)
-                DailyProgress.FatProgress = Math.Round((totalFat / DailyProgress.TargetFat) * 100, 1);
+                DailyProgress.FatProgress = Math.Round((DailyProgress.TotalFat / DailyProgress.TargetFat) * 100, 1);
+            else
+                DailyProgress.FatProgress = 0;
+
             if (DailyProgress.TargetCarbs > 0)
-                DailyProgress.CarbsProgress = Math.Round((totalCarbs / DailyProgress.TargetCarbs) * 100, 1);
+                DailyProgress.CarbsProgress = Math.Round((DailyProgress.TotalCarbs / DailyProgress.TargetCarbs) * 100, 1);
+            else
+                DailyProgress.CarbsProgress = 0;
 
             OnPropertyChanged(nameof(DailyProgress));
         }
@@ -248,11 +325,17 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private void ViewPlanDetails()
         {
-            if (SelectedPlan == null) return;
+            if (SelectedPlan == null)
+            {
+                MessageBox.Show("У вас нет активных планов питания.\n\n" +
+                              "Обратитесь к диетологу для создания индивидуального плана.",
+                              "Нет планов питания",
+                              MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
             string details = $"=== ДЕТАЛИ ПЛАНА ПИТАНИЯ ===\n\n" +
                            $"Название: {SelectedPlan.PlanName}\n" +
-                           $"Создатель: {SelectedPlan.CreatedBy}\n" +
                            $"Период: {SelectedPlan.StartDate:dd.MM.yyyy} - {SelectedPlan.EndDate:dd.MM.yyyy}\n" +
                            $"Осталось дней: {(SelectedPlan.EndDate - DateTime.Today).Days + 1}\n" +
                            $"Статус: {SelectedPlan.Status}\n\n" +
@@ -318,7 +401,7 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private string GeneratePlanReport()
         {
-            if (SelectedPlan == null) return "";
+            if (SelectedPlan == null) return "Нет данных для отчета";
 
             var report = $"=== ПЛАН ПИТАНИЯ ===\n\n" +
                         $"Клиент: {_currentUser.Username}\n" +
@@ -326,7 +409,6 @@ namespace NutriPlanner.ViewModels
                         $"Дата формирования: {DateTime.Now:dd.MM.yyyy HH:mm}\n\n" +
                         $"ОСНОВНАЯ ИНФОРМАЦИЯ:\n" +
                         $"Название плана: {SelectedPlan.PlanName}\n" +
-                        $"Создатель: {SelectedPlan.CreatedBy}\n" +
                         $"Период действия: {SelectedPlan.StartDate:dd.MM.yyyy} - {SelectedPlan.EndDate:dd.MM.yyyy}\n" +
                         $"Статус: {SelectedPlan.Status}\n" +
                         $"Осталось дней: {(SelectedPlan.EndDate - DateTime.Today).Days + 1}\n\n" +
@@ -334,21 +416,29 @@ namespace NutriPlanner.ViewModels
                         $"• Калории: {SelectedPlan.DailyCalories} ккал\n" +
                         $"• Белки: {SelectedPlan.DailyProtein} г\n" +
                         $"• Жиры: {SelectedPlan.DailyFat} г\n" +
-                        $"• Углеводы: {SelectedPlan.DailyCarbohydrates} г\n\n" +
-                        $"СТАТИСТИКА ПОТРЕБЛЕНИЯ ({SelectedDate:dd.MM.yyyy}):\n" +
-                        $"• Калории: {DailyProgress.TotalCalories:F0} ккал ({DailyProgress.CaloriesProgress:F1}%)\n" +
-                        $"• Белки: {DailyProgress.TotalProtein:F1} г ({DailyProgress.ProteinProgress:F1}%)\n" +
-                        $"• Жиры: {DailyProgress.TotalFat:F1} г ({DailyProgress.FatProgress:F1}%)\n" +
-                        $"• Углеводы: {DailyProgress.TotalCarbs:F1} г ({DailyProgress.CarbsProgress:F1}%)\n\n";
+                        $"• Углеводы: {SelectedPlan.DailyCarbohydrates} г\n\n";
+
+            // Рекомендуемые продукты для плана
+            report += $"РЕКОМЕНДУЕМЫЕ ПРОДУКТЫ:\n" +
+                     $"1. Источники белка: куриная грудка, рыба, яйца, творог, бобовые\n" +
+                     $"2. Источники полезных жиров: авокадо, орехи, оливковое масло\n" +
+                     $"3. Источники сложных углеводов: крупы, цельнозерновой хлеб, овощи\n" +
+                     $"4. Овощи и фрукты: не менее 500 г в день\n\n";
+
+            report += $"СТАТИСТИКА ПОТРЕБЛЕНИЯ ({SelectedDate:dd.MM.yyyy}):\n" +
+                     $"• Калории: {DailyProgress.TotalCalories:F0} ккал ({DailyProgress.CaloriesProgress:F1}%)\n" +
+                     $"• Белки: {DailyProgress.TotalProtein:F1} г ({DailyProgress.ProteinProgress:F1}%)\n" +
+                     $"• Жиры: {DailyProgress.TotalFat:F1} г ({DailyProgress.FatProgress:F1}%)\n" +
+                     $"• Углеводы: {DailyProgress.TotalCarbs:F1} г ({DailyProgress.CarbsProgress:F1}%)\n\n";
 
             if (TodayMeals.Any())
             {
                 report += $"ПРИЕМЫ ПИЩИ ЗА ДЕНЬ ({TodayMeals.Count}):\n";
                 foreach (var meal in TodayMeals)
                 {
-                    report += $"• {meal.MealTime:HH:mm} - {meal.MealName}\n" +
+                    report += $"• {meal.Date:HH:mm} - {meal.ProductName} ({meal.Quantity}г)\n" +
                              $"  Калории: {meal.Calories:F0}, Белки: {meal.Protein:F1}г, " +
-                             $"Жиры: {meal.Fat:F1}г, Углеводы: {meal.Carbs:F1}г\n";
+                             $"Жиры: {meal.Fat:F1}г, Углеводы: {meal.Carbohydrates:F1}г\n";
                 }
             }
             else
@@ -356,10 +446,24 @@ namespace NutriPlanner.ViewModels
                 report += "Приемов пищи за день не зафиксировано.\n";
             }
 
-            report += $"\nОтчет сформирован автоматически.\n" +
+            report += $"\nРЕКОМЕНДАЦИИ:\n" +
+                     $"1. Распределите приемы пищи на 4-6 раз в день\n" +
+                     $"2. Пейте 2-3 литра воды ежедневно\n" +
+                     $"3. Соблюдайте баланс белков, жиров и углеводов\n" +
+                     $"4. Включайте овощи в каждый прием пищи\n" +
+                     $"5. Избегайте быстрых углеводов и сладких напитков\n\n" +
+                     $"Отчет сформирован автоматически.\n" +
                      $"=== КОНЕЦ ОТЧЕТА ===";
 
             return report;
+        }
+
+        /// <summary>
+        /// Метод для обновления при активации вкладки
+        /// </summary>
+        public void OnActivated()
+        {
+            RefreshData();
         }
     }
 }

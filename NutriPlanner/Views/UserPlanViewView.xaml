@@ -1,9 +1,8 @@
-﻿<!-- NutriPlanner/Views/UserPlanViewView.xaml -->
-<UserControl x:Class="NutriPlanner.Views.UserPlanViewView"
+﻿<UserControl x:Class="NutriPlanner.Views.UserPlanViewView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="White">
-    
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -11,14 +10,19 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- Заголовок -->
-        <TextBlock Grid.Row="0" 
-                   Text="Мои планы питания" 
-                   FontSize="20" 
-                   FontWeight="Bold"
-                   Margin="0,0,0,10"/>
-        
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="Мои планы питания" 
+                       FontSize="20" 
+                       FontWeight="Bold"/>
+            <Button Content="🔄 Обновить" 
+                    Command="{Binding RefreshCommand}"
+                    Margin="20,0,0,0"
+                    Padding="10,5"
+                    ToolTip="Обновить данные"/>
+        </StackPanel>
+
         <!-- Панель управления датой и планами -->
         <Border Grid.Row="1" 
                 BorderBrush="#E0E0E0" 
@@ -26,46 +30,59 @@
                 CornerRadius="5" 
                 Padding="10"
                 Margin="0,0,0,10">
-            <StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
                 <!-- Управление датой -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,20,0">
                     <Button Content="◀" 
                             Command="{Binding PreviousDayCommand}"
-                            Width="30" Margin="0,0,10,0"/>
-                    
-                    <TextBlock Text="{Binding SelectedDate, StringFormat='dd.MM.yyyy'}"
-                               VerticalAlignment="Center"
-                               FontWeight="Bold"
-                               Width="100"
-                               TextAlignment="Center"/>
-                    
+                            Width="30" Margin="0,0,10,0"
+                            ToolTip="Предыдущий день"/>
+
+                    <Border BorderBrush="#2196F3" BorderThickness="1" CornerRadius="3" Padding="5">
+                        <TextBlock Text="{Binding SelectedDate, StringFormat='dd.MM.yyyy'}"
+                                   VerticalAlignment="Center"
+                                   FontWeight="Bold"
+                                   Width="100"
+                                   TextAlignment="Center"/>
+                    </Border>
+
                     <Button Content="▶" 
                             Command="{Binding NextDayCommand}"
-                            Width="30" Margin="10,0,20,0"/>
-                    
+                            Width="30" Margin="10,0,20,0"
+                            ToolTip="Следующий день"/>
+
                     <Button Content="Сегодня" 
                             Command="{Binding TodayCommand}"
                             Padding="10,5"/>
-                    
-                    <TextBlock Text="{Binding ActivePlan.PlanName, StringFormat='Активный план: {0}'}"
-                               VerticalAlignment="Center"
-                               Margin="20,0,0,0"
-                               FontStyle="Italic"/>
                 </StackPanel>
-                
+
                 <!-- Выбор плана -->
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <TextBlock Text="Выберите план:" 
                                VerticalAlignment="Center"
                                Margin="0,0,10,0"/>
                     <ComboBox ItemsSource="{Binding Plans}"
                               SelectedItem="{Binding SelectedPlan}"
                               DisplayMemberPath="PlanName"
-                              Width="200"/>
+                              Width="250"/>
+
+                    <!-- Активный план -->
+                    <TextBlock VerticalAlignment="Center"
+                               Margin="20,0,0,0"
+                               FontStyle="Italic"
+                               Foreground="#2196F3">
+                        <Run Text="Активный план:"/>
+                        <Run Text="{Binding ActivePlan.PlanName}"/>
+                    </TextBlock>
                 </StackPanel>
-            </StackPanel>
+            </Grid>
         </Border>
-        
+
         <!-- Прогресс выполнения плана -->
         <GroupBox Grid.Row="2" Header="Прогресс выполнения плана" Padding="10">
             <Grid>
@@ -73,107 +90,220 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="2*"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <!-- Статистика -->
-                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                    <TextBlock Text="Общая статистика:" FontWeight="Bold" Margin="0,0,0,10"/>
-                    
+                <Border Grid.Column="0" Margin="0,0,10,0" 
+                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="5" Padding="15">
                     <StackPanel>
-                        <TextBlock>
-                            <Run Text="Калории:" FontWeight="SemiBold"/>
-                            <Run Text="{Binding DailyProgress.TotalCalories, StringFormat={}{0:F0}}"/>
-                            <Run Text="/"/>
-                            <Run Text="{Binding SelectedPlan.DailyCalories}"/>
-                            <Run Text="ккал"/>
-                            <Run Text="{Binding DailyProgress.CaloriesProgress, StringFormat={}({0:F1}%)}"/>
-                        </TextBlock>
-                        
-                        <TextBlock Margin="0,5,0,0">
-                            <Run Text="Белки:" FontWeight="SemiBold"/>
-                            <Run Text="{Binding DailyProgress.TotalProtein, StringFormat={}{0:F1}}"/>
-                            <Run Text="/"/>
-                            <Run Text="{Binding SelectedPlan.DailyProtein}"/>
-                            <Run Text="г"/>
-                            <Run Text="{Binding DailyProgress.ProteinProgress, StringFormat={}({0:F1}%)}"/>
-                        </TextBlock>
-                        
-                        <TextBlock Margin="0,5,0,0">
-                            <Run Text="Жиры:" FontWeight="SemiBold"/>
-                            <Run Text="{Binding DailyProgress.TotalFat, StringFormat={}{0:F1}}"/>
-                            <Run Text="/"/>
-                            <Run Text="{Binding SelectedPlan.DailyFat}"/>
-                            <Run Text="г"/>
-                            <Run Text="{Binding DailyProgress.FatProgress, StringFormat={}({0:F1}%)}"/>
-                        </TextBlock>
-                        
-                        <TextBlock Margin="0,5,0,0">
-                            <Run Text="Углеводы:" FontWeight="SemiBold"/>
-                            <Run Text="{Binding DailyProgress.TotalCarbs, StringFormat={}{0:F1}}"/>
-                            <Run Text="/"/>
-                            <Run Text="{Binding SelectedPlan.DailyCarbohydrates}"/>
-                            <Run Text="г"/>
-                            <Run Text="{Binding DailyProgress.CarbsProgress, StringFormat={}({0:F1}%)}"/>
-                        </TextBlock>
+                        <TextBlock Text="Статистика дня" FontWeight="Bold" FontSize="16" Margin="0,0,0,15"/>
+
+                        <!-- Калории -->
+                        <Border BorderBrush="#4CAF50" BorderThickness="2" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Калории" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding DailyProgress.TotalCalories, StringFormat={}{0:F0}}" 
+                                               FontSize="20" FontWeight="Bold" Foreground="#4CAF50"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding DailyProgress.TargetCalories, StringFormat={}из {0}}" 
+                                               FontSize="12" Foreground="#666"/>
+                                    <TextBlock Text="{Binding DailyProgress.CaloriesProgress, StringFormat={}{0:F1}%}" 
+                                               FontWeight="Bold" Foreground="#4CAF50"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Белки -->
+                        <Border BorderBrush="#2196F3" BorderThickness="2" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Белки" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding DailyProgress.TotalProtein, StringFormat={}{0:F1} г}" 
+                                               FontSize="18" FontWeight="Bold" Foreground="#2196F3"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding DailyProgress.TargetProtein, StringFormat={}из {0} г}" 
+                                               FontSize="12" Foreground="#666"/>
+                                    <TextBlock Text="{Binding DailyProgress.ProteinProgress, StringFormat={}{0:F1}%}" 
+                                               FontWeight="Bold" Foreground="#2196F3"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Жиры -->
+                        <Border BorderBrush="#FF9800" BorderThickness="2" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Жиры" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding DailyProgress.TotalFat, StringFormat={}{0:F1} г}" 
+                                               FontSize="18" FontWeight="Bold" Foreground="#FF9800"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding DailyProgress.TargetFat, StringFormat={}из {0} г}" 
+                                               FontSize="12" Foreground="#666"/>
+                                    <TextBlock Text="{Binding DailyProgress.FatProgress, StringFormat={}{0:F1}%}" 
+                                               FontWeight="Bold" Foreground="#FF9800"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Углеводы -->
+                        <Border BorderBrush="#9C27B0" BorderThickness="2" CornerRadius="5" Padding="10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Углеводы" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding DailyProgress.TotalCarbs, StringFormat={}{0:F1} г}" 
+                                               FontSize="18" FontWeight="Bold" Foreground="#9C27B0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding DailyProgress.TargetCarbs, StringFormat={}из {0} г}" 
+                                               FontSize="12" Foreground="#666"/>
+                                    <TextBlock Text="{Binding DailyProgress.CarbsProgress, StringFormat={}{0:F1}%}" 
+                                               FontWeight="Bold" Foreground="#9C27B0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                     </StackPanel>
-                </StackPanel>
-                
+                </Border>
+
                 <!-- Список приемов пищи -->
-                <StackPanel Grid.Column="1">
-                    <TextBlock Text="Приемы пищи за день:" FontWeight="Bold" Margin="0,0,0,10"/>
-                    
-                    <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding TodayMeals}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="#E0E0E0" BorderThickness="1" 
-                                            CornerRadius="3" Padding="10" Margin="0,0,0,5">
-                                        <StackPanel>
-                                            <TextBlock FontWeight="Bold" Text="{Binding MealName}"/>
-                                            <TextBlock>
-                                                <Run Text="Время:"/>
-                                                <Run Text="{Binding MealTime, StringFormat=HH:mm}"/>
-                                            </TextBlock>
-                                            <TextBlock>
-                                                <Run Text="Калории:"/>
-                                                <Run Text="{Binding Calories, StringFormat={}{0:F0}}"/>
-                                                <Run Text="ккал,"/>
-                                                <Run Text="Б:"/>
-                                                <Run Text="{Binding Protein, StringFormat={}{0:F1}}"/>
-                                                <Run Text="г,"/>
-                                                <Run Text="Ж:"/>
-                                                <Run Text="{Binding Fat, StringFormat={}{0:F1}}"/>
-                                                <Run Text="г,"/>
-                                                <Run Text="У:"/>
-                                                <Run Text="{Binding Carbs, StringFormat={}{0:F1}}"/>
-                                                <Run Text="г"/>
-                                            </TextBlock>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                    
-                    <TextBlock Text="{Binding TodayMeals.Count, StringFormat='Всего приемов пищи: {0}'}"
-                               FontStyle="Italic" Margin="0,10,0,0"/>
-                </StackPanel>
+                <Border Grid.Column="1" 
+                        BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="5" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Приемы пищи за день" 
+                                       FontWeight="Bold" FontSize="16"/>
+                            <TextBlock Text="{Binding TodayMeals.Count, StringFormat=' ({0})'}" 
+                                       FontWeight="Bold" FontSize="16" Foreground="#2196F3" Margin="5,0,0,0"/>
+                        </StackPanel>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding TodayMeals}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="#E0E0E0" BorderThickness="1" 
+                                                CornerRadius="3" Padding="10" Margin="0,0,0,5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Время и продукт -->
+                                                <StackPanel Grid.Column="0" Margin="0,0,15,0">
+                                                    <TextBlock Text="{Binding Date, StringFormat=HH:mm}"
+                                                               FontWeight="Bold" FontSize="14"/>
+                                                    <TextBlock Text="{Binding ProductName}" 
+                                                               FontWeight="SemiBold" Margin="0,5,0,0"/>
+                                                    <TextBlock Text="{Binding Quantity, StringFormat={}{0} г}"
+                                                               FontSize="11" Foreground="#666"/>
+                                                </StackPanel>
+
+                                                <!-- Питательная ценность -->
+                                                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <Border Background="#4CAF50" CornerRadius="3" Padding="5,2" Margin="0,0,5,2">
+                                                        <TextBlock Text="{Binding Calories, StringFormat={}{0} ккал}" 
+                                                                   Foreground="White" FontSize="11"/>
+                                                    </Border>
+                                                    <Border Background="#2196F3" CornerRadius="3" Padding="5,2" Margin="0,0,5,2">
+                                                        <TextBlock Text="{Binding Protein, StringFormat={}Б: {0:F1}г}" 
+                                                                   Foreground="White" FontSize="11"/>
+                                                    </Border>
+                                                    <Border Background="#FF9800" CornerRadius="3" Padding="5,2" Margin="0,0,5,2">
+                                                        <TextBlock Text="{Binding Fat, StringFormat={}Ж: {0:F1}г}" 
+                                                                   Foreground="White" FontSize="11"/>
+                                                    </Border>
+                                                    <Border Background="#9C27B0" CornerRadius="3" Padding="5,2">
+                                                        <TextBlock Text="{Binding Carbohydrates, StringFormat={}У: {0:F1}г}" 
+                                                                   Foreground="White" FontSize="11"/>
+                                                    </Border>
+                                                </WrapPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- Сообщение если нет записей -->
+                        <TextBlock Grid.Row="1" Text="Нет записей за выбранный день" 
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontStyle="Italic" Foreground="#999">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TodayMeals.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
             </Grid>
         </GroupBox>
-        
+
         <!-- Кнопки действий -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-            <Button Content="Просмотреть детали" 
+            <Button Content="📋 Детали плана" 
                     Command="{Binding ViewPlanDetailsCommand}"
                     Padding="15,8"
                     Margin="0,0,10,0"
-                    Width="150"/>
-            
-            <Button Content="Экспортировать план" 
+                    Width="150"
+                    Background="#4CAF50"
+                    Foreground="White"/>
+
+            <Button Content="📤 Экспорт плана" 
                     Command="{Binding ExportPlanCommand}"
                     Padding="15,8"
                     Width="150"
                     Background="#2196F3"
                     Foreground="White"/>
         </StackPanel>
+
+        <!-- Индикатор загрузки -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2" 
+                Background="#80000000">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="Загрузка данных..." 
+                           Foreground="White" FontSize="16" Margin="0,0,0,10"/>
+                <ProgressBar IsIndeterminate="True" Width="200" Height="10"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>
