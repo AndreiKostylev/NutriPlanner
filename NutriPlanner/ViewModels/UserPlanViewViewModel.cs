@@ -10,11 +10,12 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
 
 namespace NutriPlanner.ViewModels
 {
     /// <summary>
-    /// ViewModel для просмотра планов питания пользователем
+    /// ViewModel для просмотра планов питания пользователем с рекомендациями продуктов
     /// </summary>
     public class UserPlanViewViewModel : BaseViewModel
     {
@@ -27,6 +28,13 @@ namespace NutriPlanner.ViewModels
         private DailyNutritionDto _dailyProgress;
         private DateTime _selectedDate = DateTime.Today;
         private bool _isLoading;
+        private bool _isRefreshing = false; // Флаг для предотвращения одновременных обновлений
+
+        // Новые свойства для рекомендаций продуктов
+        private ObservableCollection<ProductDto> _recommendedProducts;
+        private ObservableCollection<ProductDto> _breakfastRecommendations;
+        private ObservableCollection<ProductDto> _lunchRecommendations;
+        private ObservableCollection<ProductDto> _dinnerRecommendations;
 
         public ObservableCollection<NutritionPlanDto> Plans
         {
@@ -39,12 +47,16 @@ namespace NutriPlanner.ViewModels
             get => _selectedPlan;
             set
             {
-                _selectedPlan = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(HasSelectedPlan));
-                if (value != null)
+                if (_selectedPlan != value)
                 {
-                    LoadTodayMeals();
+                    _selectedPlan = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(HasSelectedPlan));
+                    if (value != null)
+                    {
+                        LoadTodayMeals();
+                        LoadRecommendedProducts();
+                    }
                 }
             }
         }
@@ -66,9 +78,13 @@ namespace NutriPlanner.ViewModels
             get => _selectedDate;
             set
             {
-                _selectedDate = value;
-                OnPropertyChanged();
-                LoadTodayMeals();
+                if (_selectedDate != value)
+                {
+                    _selectedDate = value;
+                    OnPropertyChanged();
+                    LoadTodayMeals();
+                    LoadRecommendedProducts();
+                }
             }
         }
 
@@ -79,6 +95,31 @@ namespace NutriPlanner.ViewModels
         }
 
         public bool HasSelectedPlan => SelectedPlan != null;
+
+        // Рекомендованные продукты
+        public ObservableCollection<ProductDto> RecommendedProducts
+        {
+            get => _recommendedProducts;
+            set { _recommendedProducts = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<ProductDto> BreakfastRecommendations
+        {
+            get => _breakfastRecommendations;
+            set { _breakfastRecommendations = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<ProductDto> LunchRecommendations
+        {
+            get => _lunchRecommendations;
+            set { _lunchRecommendations = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<ProductDto> DinnerRecommendations
+        {
+            get => _dinnerRecommendations;
+            set { _dinnerRecommendations = value; OnPropertyChanged(); }
+        }
 
         // Активный план на сегодня
         public NutritionPlanDto ActivePlan
@@ -101,6 +142,7 @@ namespace NutriPlanner.ViewModels
         public ICommand ExportPlanCommand { get; }
         public ICommand ViewPlanDetailsCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand AddProductToMealCommand { get; }
 
         public UserPlanViewViewModel(MainViewModel mainVM, User currentUser)
         {
@@ -110,6 +152,10 @@ namespace NutriPlanner.ViewModels
             Plans = new ObservableCollection<NutritionPlanDto>();
             TodayMeals = new ObservableCollection<FoodEntryDto>();
             DailyProgress = new DailyNutritionDto();
+            RecommendedProducts = new ObservableCollection<ProductDto>();
+            BreakfastRecommendations = new ObservableCollection<ProductDto>();
+            LunchRecommendations = new ObservableCollection<ProductDto>();
+            DinnerRecommendations = new ObservableCollection<ProductDto>();
 
             LoadPlansCommand = new RelayCommand(LoadPlans);
             PreviousDayCommand = new RelayCommand(PreviousDay);
@@ -117,7 +163,8 @@ namespace NutriPlanner.ViewModels
             TodayCommand = new RelayCommand(() => SelectedDate = DateTime.Today);
             ExportPlanCommand = new RelayCommand(ExportPlan, () => HasSelectedPlan);
             ViewPlanDetailsCommand = new RelayCommand(ViewPlanDetails, () => HasSelectedPlan);
-            RefreshCommand = new RelayCommand(RefreshData);
+            RefreshCommand = new RelayCommand(RefreshData, () => !_isRefreshing);
+            AddProductToMealCommand = new RelayCommand(AddProductToMeal);
 
             LoadPlans();
         }
@@ -127,8 +174,19 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         public async void RefreshData()
         {
-            await LoadPlansAsync();
-            LoadTodayMeals();
+            if (_isRefreshing) return; // Предотвращаем одновременные обновления
+
+            try
+            {
+                _isRefreshing = true;
+                await LoadPlansAsync();
+                await LoadTodayMealsAsync();
+                await LoadRecommendedProductsAsync();
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
         }
 
         /// <summary>
@@ -143,7 +201,8 @@ namespace NutriPlanner.ViewModels
                 // Используем новый контекст
                 using var context = new DatabaseContext();
 
-                Plans.Clear();
+                // Вместо Clear() создаем новую коллекцию
+                var newPlans = new ObservableCollection<NutritionPlanDto>();
 
                 var plans = await context.NutritionPlans
                     .Where(p => p.UserId == _currentUser.UserId)
@@ -152,7 +211,7 @@ namespace NutriPlanner.ViewModels
 
                 foreach (var plan in plans)
                 {
-                    var planDto = new NutritionPlanDto
+                    newPlans.Add(new NutritionPlanDto
                     {
                         PlanId = plan.PlanId,
                         PlanName = plan.PlanName,
@@ -163,10 +222,11 @@ namespace NutriPlanner.ViewModels
                         DailyFat = plan.DailyFat,
                         DailyCarbohydrates = plan.DailyCarbohydrates,
                         Status = plan.Status
-                    };
-
-                    Plans.Add(planDto);
+                    });
                 }
+
+                // Заменяем всю коллекцию вместо поштучного добавления
+                Plans = newPlans;
 
                 if (Plans.Any())
                 {
@@ -204,9 +264,9 @@ namespace NutriPlanner.ViewModels
         }
 
         /// <summary>
-        /// Загружает приемы пищи за выбранный день
+        /// Загружает приемы пищи за выбранный день (асинхронная версия)
         /// </summary>
-        private async void LoadTodayMeals()
+        public async Task LoadTodayMealsAsync()
         {
             try
             {
@@ -215,7 +275,8 @@ namespace NutriPlanner.ViewModels
                 // Используем новый контекст
                 using var context = new DatabaseContext();
 
-                TodayMeals.Clear();
+                // Вместо Clear() создаем новую коллекцию
+                var newTodayMeals = new ObservableCollection<FoodEntryDto>();
 
                 if (_currentUser == null) return;
 
@@ -228,7 +289,7 @@ namespace NutriPlanner.ViewModels
 
                 foreach (var entry in entries)
                 {
-                    TodayMeals.Add(new FoodEntryDto
+                    newTodayMeals.Add(new FoodEntryDto
                     {
                         EntryId = entry.DiaryId,
                         Date = entry.Date,
@@ -240,6 +301,9 @@ namespace NutriPlanner.ViewModels
                         Carbohydrates = entry.Carbohydrates
                     });
                 }
+
+                // Заменяем всю коллекцию вместо поштучного добавления
+                TodayMeals = newTodayMeals;
 
                 // Рассчитываем прогресс после загрузки данных
                 CalculateProgress();
@@ -255,6 +319,175 @@ namespace NutriPlanner.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        /// <summary>
+        /// Загружает приемы пищи за выбранный день (синхронная обертка)
+        /// </summary>
+        private async void LoadTodayMeals()
+        {
+            await LoadTodayMealsAsync();
+        }
+
+        /// <summary>
+        /// Загружает рекомендованные продукты для плана (асинхронная версия)
+        /// </summary>
+        public async Task LoadRecommendedProductsAsync()
+        {
+            try
+            {
+                IsLoading = true;
+
+                // Используем новый контекст
+                using var context = new DatabaseContext();
+
+                // Вместо Clear() создаем новые коллекции
+                var newRecommendedProducts = new ObservableCollection<ProductDto>();
+                var newBreakfastRecommendations = new ObservableCollection<ProductDto>();
+                var newLunchRecommendations = new ObservableCollection<ProductDto>();
+                var newDinnerRecommendations = new ObservableCollection<ProductDto>();
+
+                // Загружаем все продукты из базы данных
+                var allProducts = await context.Products
+                    .OrderBy(p => p.ProductName)
+                    .ToListAsync();
+
+                if (SelectedPlan != null)
+                {
+                    // Группируем продукты по категориям для рекомендаций
+                    var proteinProducts = allProducts
+                        .Where(p => p.Protein > 20 && p.Calories < 300)
+                        .Take(5)
+                        .ToList();
+
+                    var carbProducts = allProducts
+                        .Where(p => p.Carbohydrates > 10 && p.Calories < 200)
+                        .Take(5)
+                        .ToList();
+
+                    var fatProducts = allProducts
+                        .Where(p => p.Fat > 5 && p.Fat < 50 && p.Calories < 500)
+                        .Take(5)
+                        .ToList();
+
+                    var veggieProducts = allProducts
+                        .Where(p => p.Category == "Овощи" || p.Category == "Фрукты")
+                        .Take(8)
+                        .ToList();
+
+                    // Добавляем в общий список рекомендованных продуктов
+                    foreach (var product in proteinProducts.Concat(carbProducts).Concat(fatProducts).Concat(veggieProducts).Distinct())
+                    {
+                        newRecommendedProducts.Add(new ProductDto
+                        {
+                            ProductId = product.ProductId,
+                            ProductName = product.ProductName,
+                            Category = product.Category,
+                            Calories = product.Calories,
+                            Protein = product.Protein,
+                            Fat = product.Fat,
+                            Carbohydrates = product.Carbohydrates,
+                            Unit = product.Unit
+                        });
+                    }
+
+                    // Рекомендации для завтрака
+                    var breakfastProds = allProducts
+                        .Where(p => p.Category == "Молочные" ||
+                                   p.Category == "Крупы" ||
+                                   p.Category == "Яйца" ||
+                                   p.Category == "Фрукты")
+                        .Take(6)
+                        .ToList();
+
+                    foreach (var product in breakfastProds)
+                    {
+                        newBreakfastRecommendations.Add(new ProductDto
+                        {
+                            ProductId = product.ProductId,
+                            ProductName = product.ProductName,
+                            Category = product.Category,
+                            Calories = product.Calories,
+                            Protein = product.Protein,
+                            Fat = product.Fat,
+                            Carbohydrates = product.Carbohydrates,
+                            Unit = product.Unit
+                        });
+                    }
+
+                    // Рекомендации для обеда
+                    var lunchProds = allProducts
+                        .Where(p => p.Category == "Мясо" ||
+                                   p.Category == "Рыба" ||
+                                   p.Category == "Овощи" ||
+                                   p.Category == "Крупы")
+                        .Take(6)
+                        .ToList();
+
+                    foreach (var product in lunchProds)
+                    {
+                        newLunchRecommendations.Add(new ProductDto
+                        {
+                            ProductId = product.ProductId,
+                            ProductName = product.ProductName,
+                            Category = product.Category,
+                            Calories = product.Calories,
+                            Protein = product.Protein,
+                            Fat = product.Fat,
+                            Carbohydrates = product.Carbohydrates,
+                            Unit = product.Unit
+                        });
+                    }
+
+                    // Рекомендации для ужина
+                    var dinnerProds = allProducts
+                        .Where(p => (p.Category == "Мясо" || p.Category == "Рыба") && p.Calories < 250 ||
+                                   p.Category == "Овощи" ||
+                                   p.Category == "Бобовые")
+                        .Take(6)
+                        .ToList();
+
+                    foreach (var product in dinnerProds)
+                    {
+                        newDinnerRecommendations.Add(new ProductDto
+                        {
+                            ProductId = product.ProductId,
+                            ProductName = product.ProductName,
+                            Category = product.Category,
+                            Calories = product.Calories,
+                            Protein = product.Protein,
+                            Fat = product.Fat,
+                            Carbohydrates = product.Carbohydrates,
+                            Unit = product.Unit
+                        });
+                    }
+                }
+
+                // Заменяем все коллекции
+                RecommendedProducts = newRecommendedProducts;
+                BreakfastRecommendations = newBreakfastRecommendations;
+                LunchRecommendations = newLunchRecommendations;
+                DinnerRecommendations = newDinnerRecommendations;
+
+                _mainVM.UpdateStatus($"Загружено {RecommendedProducts.Count} рекомендованных продуктов");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка загрузки рекомендованных продуктов: {ex.Message}", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// Загружает рекомендованные продукты для плана (синхронная обертка)
+        /// </summary>
+        private async void LoadRecommendedProducts()
+        {
+            await LoadRecommendedProductsAsync();
         }
 
         /// <summary>
@@ -344,6 +577,11 @@ namespace NutriPlanner.ViewModels
                            $"• Белки: {SelectedPlan.DailyProtein} г\n" +
                            $"• Жиры: {SelectedPlan.DailyFat} г\n" +
                            $"• Углеводы: {SelectedPlan.DailyCarbohydrates} г\n\n" +
+                           $"РЕКОМЕНДУЕМЫЕ ПРОДУКТЫ:\n" +
+                           $"• Белковые: куриная грудка, индейка, творог, яйца\n" +
+                           $"• Углеводные: гречка, овсянка, рис, картофель\n" +
+                           $"• Жиры: авокадо, орехи, оливковое масло\n" +
+                           $"• Овощи: брокколи, шпинат, морковь, помидоры\n\n" +
                            $"ПРОГРЕСС ЗА {SelectedDate:dd.MM.yyyy}:\n" +
                            $"• Калории: {DailyProgress.TotalCalories:F0} / {SelectedPlan.DailyCalories} " +
                            $"({DailyProgress.CaloriesProgress:F1}%)\n" +
@@ -357,6 +595,18 @@ namespace NutriPlanner.ViewModels
 
             MessageBox.Show(details, "Детали плана",
                 MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        /// <summary>
+        /// Добавляет продукт в дневник питания
+        /// </summary>
+        private void AddProductToMeal()
+        {
+            MessageBox.Show("Для добавления продукта перейдите в раздел 'Дневник питания'",
+                "Добавление продукта",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+
+            _mainVM.ShowDailyNutritionCommand.Execute(null);
         }
 
         /// <summary>
@@ -379,7 +629,7 @@ namespace NutriPlanner.ViewModels
                 if (saveDialog.ShowDialog() == true)
                 {
                     string report = GeneratePlanReport();
-                    System.IO.File.WriteAllText(saveDialog.FileName, report, System.Text.Encoding.UTF8);
+                    File.WriteAllText(saveDialog.FileName, report, System.Text.Encoding.UTF8);
 
                     _mainVM.UpdateStatus($"План экспортирован в {saveDialog.FileName}");
                     MessageBox.Show($"План успешно экспортирован в файл:\n{saveDialog.FileName}",
@@ -418,12 +668,40 @@ namespace NutriPlanner.ViewModels
                         $"• Жиры: {SelectedPlan.DailyFat} г\n" +
                         $"• Углеводы: {SelectedPlan.DailyCarbohydrates} г\n\n";
 
-            // Рекомендуемые продукты для плана
-            report += $"РЕКОМЕНДУЕМЫЕ ПРОДУКТЫ:\n" +
-                     $"1. Источники белка: куриная грудка, рыба, яйца, творог, бобовые\n" +
-                     $"2. Источники полезных жиров: авокадо, орехи, оливковое масло\n" +
-                     $"3. Источники сложных углеводов: крупы, цельнозерновой хлеб, овощи\n" +
-                     $"4. Овощи и фрукты: не менее 500 г в день\n\n";
+            // Рекомендации продуктов по приемам пищи
+            report += $"РЕКОМЕНДУЕМЫЕ ПРОДУКТЫ ДЛЯ ПРИЕМОВ ПИЩИ:\n\n" +
+                     $"ЗАВТРАК (примерно 25% от суточной нормы):\n";
+
+            if (BreakfastRecommendations.Any())
+            {
+                foreach (var product in BreakfastRecommendations.Take(5))
+                {
+                    report += $"• {product.ProductName}: {product.Calories} ккал/100г, Б: {product.Protein}г, Ж: {product.Fat}г, У: {product.Carbohydrates}г\n";
+                }
+            }
+
+            report += $"\nОБЕД (примерно 35% от суточной нормы):\n";
+            if (LunchRecommendations.Any())
+            {
+                foreach (var product in LunchRecommendations.Take(5))
+                {
+                    report += $"• {product.ProductName}: {product.Calories} ккал/100г, Б: {product.Protein}г, Ж: {product.Fat}г, У: {product.Carbohydrates}г\n";
+                }
+            }
+
+            report += $"\nУЖИН (примерно 30% от суточной нормы):\n";
+            if (DinnerRecommendations.Any())
+            {
+                foreach (var product in DinnerRecommendations.Take(5))
+                {
+                    report += $"• {product.ProductName}: {product.Calories} ккал/100г, Б: {product.Protein}г, Ж: {product.Fat}г, У: {product.Carbohydrates}г\n";
+                }
+            }
+
+            report += $"\nПЕРЕКУСЫ (примерно 10% от суточной нормы):\n" +
+                     $"• Фрукты (яблоки, бананы, апельсины)\n" +
+                     $"• Орехи (миндаль, грецкие орехи)\n" +
+                     $"• Йогурт, творог\n\n";
 
             report += $"СТАТИСТИКА ПОТРЕБЛЕНИЯ ({SelectedDate:dd.MM.yyyy}):\n" +
                      $"• Калории: {DailyProgress.TotalCalories:F0} ккал ({DailyProgress.CaloriesProgress:F1}%)\n" +

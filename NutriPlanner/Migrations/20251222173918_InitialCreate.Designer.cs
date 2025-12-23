@@ -12,8 +12,8 @@ using NutriPlanner.Data;
 namespace NutriPlanner.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    [Migration("20251207181149_AddIsActiveToUser")]
-    partial class AddIsActiveToUser
+    [Migration("20251222173918_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -190,7 +190,8 @@ namespace NutriPlanner.Migrations
 
                     b.Property<string>("ProductName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal>("Protein")
                         .HasColumnType("decimal(18,2)");
@@ -261,6 +262,391 @@ namespace NutriPlanner.Migrations
                             ProductName = "Яблоко",
                             Protein = 0.3m,
                             Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 6,
+                            Calories = 242m,
+                            Carbohydrates = 0m,
+                            Category = "Мясо",
+                            Fat = 16m,
+                            ProductName = "Свинина",
+                            Protein = 25m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 7,
+                            Calories = 135m,
+                            Carbohydrates = 0m,
+                            Category = "Мясо",
+                            Fat = 1m,
+                            ProductName = "Индейка",
+                            Protein = 29m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 8,
+                            Calories = 541m,
+                            Carbohydrates = 1.4m,
+                            Category = "Мясо",
+                            Fat = 42m,
+                            ProductName = "Бекон",
+                            Protein = 37m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 9,
+                            Calories = 208m,
+                            Carbohydrates = 0m,
+                            Category = "Рыба",
+                            Fat = 13m,
+                            ProductName = "Лосось",
+                            Protein = 20m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 10,
+                            Calories = 184m,
+                            Carbohydrates = 0m,
+                            Category = "Рыба",
+                            Fat = 6m,
+                            ProductName = "Тунец",
+                            Protein = 30m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 11,
+                            Calories = 82m,
+                            Carbohydrates = 0m,
+                            Category = "Рыба",
+                            Fat = 0.7m,
+                            ProductName = "Треска",
+                            Protein = 18m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 12,
+                            Calories = 85m,
+                            Carbohydrates = 0m,
+                            Category = "Морепродукты",
+                            Fat = 0.5m,
+                            ProductName = "Креветки",
+                            Protein = 20m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 13,
+                            Calories = 155m,
+                            Carbohydrates = 1.1m,
+                            Category = "Яйца",
+                            Fat = 11m,
+                            ProductName = "Яйцо куриное",
+                            Protein = 13m,
+                            Unit = "шт"
+                        },
+                        new
+                        {
+                            ProductId = 14,
+                            Calories = 121m,
+                            Carbohydrates = 1.8m,
+                            Category = "Молочные",
+                            Fat = 5m,
+                            ProductName = "Творог 5%",
+                            Protein = 17m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 15,
+                            Calories = 404m,
+                            Carbohydrates = 1.3m,
+                            Category = "Молочные",
+                            Fat = 34m,
+                            ProductName = "Сыр Чеддер",
+                            Protein = 23m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 16,
+                            Calories = 52m,
+                            Carbohydrates = 4.7m,
+                            Category = "Молочные",
+                            Fat = 2.5m,
+                            ProductName = "Молоко 2.5%",
+                            Protein = 2.9m,
+                            Unit = "мл"
+                        },
+                        new
+                        {
+                            ProductId = 17,
+                            Calories = 59m,
+                            Carbohydrates = 3.6m,
+                            Category = "Молочные",
+                            Fat = 0.4m,
+                            ProductName = "Йогурт греческий",
+                            Protein = 10m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 18,
+                            Calories = 68m,
+                            Carbohydrates = 12m,
+                            Category = "Крупы",
+                            Fat = 1.4m,
+                            ProductName = "Овсянка",
+                            Protein = 2.4m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 19,
+                            Calories = 158m,
+                            Carbohydrates = 31m,
+                            Category = "Крупы",
+                            Fat = 0.9m,
+                            ProductName = "Макароны вареные",
+                            Protein = 5.8m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 20,
+                            Calories = 247m,
+                            Carbohydrates = 41m,
+                            Category = "Хлеб",
+                            Fat = 3.4m,
+                            ProductName = "Хлеб цельнозерновой",
+                            Protein = 13m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 21,
+                            Calories = 77m,
+                            Carbohydrates = 17m,
+                            Category = "Овощи",
+                            Fat = 0.1m,
+                            ProductName = "Картофель",
+                            Protein = 2m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 22,
+                            Calories = 41m,
+                            Carbohydrates = 10m,
+                            Category = "Овощи",
+                            Fat = 0.2m,
+                            ProductName = "Морковь",
+                            Protein = 0.9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 23,
+                            Calories = 18m,
+                            Carbohydrates = 3.9m,
+                            Category = "Овощи",
+                            Fat = 0.2m,
+                            ProductName = "Помидор",
+                            Protein = 0.9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 24,
+                            Calories = 15m,
+                            Carbohydrates = 3.6m,
+                            Category = "Овощи",
+                            Fat = 0.1m,
+                            ProductName = "Огурец",
+                            Protein = 0.7m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 25,
+                            Calories = 34m,
+                            Carbohydrates = 7m,
+                            Category = "Овощи",
+                            Fat = 0.4m,
+                            ProductName = "Брокколи",
+                            Protein = 2.8m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 26,
+                            Calories = 23m,
+                            Carbohydrates = 3.6m,
+                            Category = "Овощи",
+                            Fat = 0.4m,
+                            ProductName = "Шпинат",
+                            Protein = 2.9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 27,
+                            Calories = 89m,
+                            Carbohydrates = 23m,
+                            Category = "Фрукты",
+                            Fat = 0.3m,
+                            ProductName = "Банан",
+                            Protein = 1.1m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 28,
+                            Calories = 47m,
+                            Carbohydrates = 12m,
+                            Category = "Фрукты",
+                            Fat = 0.1m,
+                            ProductName = "Апельсин",
+                            Protein = 0.9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 29,
+                            Calories = 32m,
+                            Carbohydrates = 7.7m,
+                            Category = "Фрукты",
+                            Fat = 0.3m,
+                            ProductName = "Клубника",
+                            Protein = 0.7m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 30,
+                            Calories = 160m,
+                            Carbohydrates = 9m,
+                            Category = "Фрукты",
+                            Fat = 15m,
+                            ProductName = "Авокадо",
+                            Protein = 2m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 31,
+                            Calories = 579m,
+                            Carbohydrates = 22m,
+                            Category = "Орехи",
+                            Fat = 50m,
+                            ProductName = "Миндаль",
+                            Protein = 21m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 32,
+                            Calories = 654m,
+                            Carbohydrates = 14m,
+                            Category = "Орехи",
+                            Fat = 65m,
+                            ProductName = "Грецкие орехи",
+                            Protein = 15m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 33,
+                            Calories = 567m,
+                            Carbohydrates = 16m,
+                            Category = "Орехи",
+                            Fat = 49m,
+                            ProductName = "Арахис",
+                            Protein = 26m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 34,
+                            Calories = 884m,
+                            Carbohydrates = 0m,
+                            Category = "Масла",
+                            Fat = 100m,
+                            ProductName = "Оливковое масло",
+                            Protein = 0m,
+                            Unit = "мл"
+                        },
+                        new
+                        {
+                            ProductId = 35,
+                            Calories = 717m,
+                            Carbohydrates = 0.1m,
+                            Category = "Масла",
+                            Fat = 81m,
+                            ProductName = "Сливочное масло",
+                            Protein = 0.9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 36,
+                            Calories = 116m,
+                            Carbohydrates = 20m,
+                            Category = "Бобовые",
+                            Fat = 0.4m,
+                            ProductName = "Чечевица вареная",
+                            Protein = 9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 37,
+                            Calories = 127m,
+                            Carbohydrates = 23m,
+                            Category = "Бобовые",
+                            Fat = 0.5m,
+                            ProductName = "Фасоль",
+                            Protein = 9m,
+                            Unit = "г"
+                        },
+                        new
+                        {
+                            ProductId = 38,
+                            Calories = 0m,
+                            Carbohydrates = 0m,
+                            Category = "Напитки",
+                            Fat = 0m,
+                            ProductName = "Вода",
+                            Protein = 0m,
+                            Unit = "мл"
+                        },
+                        new
+                        {
+                            ProductId = 39,
+                            Calories = 1m,
+                            Carbohydrates = 0.3m,
+                            Category = "Напитки",
+                            Fat = 0m,
+                            ProductName = "Чай черный",
+                            Protein = 0m,
+                            Unit = "мл"
+                        },
+                        new
+                        {
+                            ProductId = 40,
+                            Calories = 1m,
+                            Carbohydrates = 0m,
+                            Category = "Напитки",
+                            Fat = 0m,
+                            ProductName = "Кофе черный",
+                            Protein = 0.1m,
+                            Unit = "мл"
                         });
                 });
 
@@ -388,7 +774,7 @@ namespace NutriPlanner.Migrations
                             Height = 180m,
                             IsActive = true,
                             PasswordHash = "hashed_password",
-                            RegistrationDate = new DateTime(2025, 12, 7, 23, 11, 47, 890, DateTimeKind.Local).AddTicks(4260),
+                            RegistrationDate = new DateTime(2025, 12, 22, 22, 39, 16, 789, DateTimeKind.Local).AddTicks(9987),
                             RoleId = 3,
                             Username = "admin",
                             Weight = 75m
@@ -408,7 +794,7 @@ namespace NutriPlanner.Migrations
                             Height = 165m,
                             IsActive = true,
                             PasswordHash = "hashed_password",
-                            RegistrationDate = new DateTime(2025, 12, 7, 23, 11, 47, 890, DateTimeKind.Local).AddTicks(4266),
+                            RegistrationDate = new DateTime(2025, 12, 22, 22, 39, 16, 789, DateTimeKind.Local).AddTicks(9999),
                             RoleId = 2,
                             Username = "dietitian",
                             Weight = 60m

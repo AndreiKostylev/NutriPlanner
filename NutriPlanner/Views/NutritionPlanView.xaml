@@ -6,167 +6,479 @@
              mc:Ignorable="d"
              Background="White">
 
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <TextBlock Text="Создание плана питания (для диетологов)" 
-                   FontSize="20" 
-                   FontWeight="Bold" 
-                   Margin="0,0,0,10"/>
+            <!-- Заголовок -->
+            <TextBlock Grid.Row="0" 
+                       Text="Создание плана питания (для диетологов)" 
+                       FontSize="20" 
+                       FontWeight="Bold" 
+                       Margin="0,0,0,10"/>
 
-        <!-- Выбор клиента -->
-        <GroupBox Grid.Row="1" Header="Выбор клиента" Margin="0,0,0,10" Padding="10">
-            <StackPanel>
-                <TextBlock Text="Выберите клиента:" Margin="0,0,0,5"/>
-                <ComboBox ItemsSource="{Binding Clients}" 
-                          SelectedItem="{Binding SelectedClient}"
-                          DisplayMemberPath="Username"
-                          Width="200"/>
+            <!-- Выбор клиента -->
+            <GroupBox Grid.Row="1" Header="Выбор клиента" Margin="0,0,0,10" Padding="10">
+                <StackPanel>
+                    <TextBlock Text="Выберите клиента:" Margin="0,0,0,5"/>
+                    <ComboBox ItemsSource="{Binding Clients}" 
+                              SelectedItem="{Binding SelectedClient}"
+                              DisplayMemberPath="Username"
+                              Width="200"/>
 
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button Content="Загрузить клиентов" 
-                            Command="{Binding LoadClientsCommand}"
-                            Margin="0,0,10,0"
-                            Padding="10,5"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Загрузить клиентов" 
+                                Command="{Binding LoadClientsCommand}"
+                                Margin="0,0,10,0"
+                                Padding="10,5"/>
 
-                    <Button Content="Рассчитать цели" 
-                            Command="{Binding CalculateTargetsCommand}"
-                            Padding="10,5"
-                            Background="#4CAF50"
-                            Foreground="White"/>
+                        <Button Content="Рассчитать цели" 
+                                Command="{Binding CalculateTargetsCommand}"
+                                Padding="10,5"
+                                Background="#4CAF50"
+                                Foreground="White"/>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-        </GroupBox>
+            </GroupBox>
 
-        <!-- Основная информация плана -->
-        <GroupBox Grid.Row="2" Header="Настройка плана" Margin="0,0,0,10" Padding="10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <!-- Основная информация плана -->
+            <GroupBox Grid.Row="2" Header="Настройка плана" Margin="0,0,0,10" Padding="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Левая колонка - основные параметры -->
-                <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                    <TextBlock Text="Основные параметры:" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <!-- Левая колонка - основные параметры -->
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="Основные параметры:" FontWeight="Bold" Margin="0,0,0,10"/>
 
-                    <StackPanel>
-                        <TextBlock Text="Название плана:" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding PlanName}" Margin="0,0,0,10"/>
+                        <StackPanel>
+                            <TextBlock Text="Название плана:" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding PlanName}" Margin="0,0,0,10"/>
 
-                        <TextBlock Text="Период действия:" Margin="0,0,0,5"/>
-                        <StackPanel Orientation="Horizontal">
-                            <DatePicker SelectedDate="{Binding StartDate}" 
-                                        Width="120" 
-                                        Margin="0,0,10,10"/>
-                            <TextBlock Text="-" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                            <DatePicker SelectedDate="{Binding EndDate}" 
-                                        Width="120" 
-                                        Margin="0,0,0,10"/>
+                            <TextBlock Text="Период действия:" Margin="0,0,0,5"/>
+                            <StackPanel Orientation="Horizontal">
+                                <DatePicker SelectedDate="{Binding StartDate}" 
+                                            Width="120" 
+                                            Margin="0,0,10,10"/>
+                                <TextBlock Text="-" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <DatePicker SelectedDate="{Binding EndDate}" 
+                                            Width="120" 
+                                            Margin="0,0,0,10"/>
+                            </StackPanel>
+
+                            <TextBlock Text="Статус:" Margin="0,0,0,5"/>
+                            <ComboBox SelectedItem="{Binding Status}" Margin="0,0,0,10">
+                                <ComboBoxItem Content="Активен"/>
+                                <ComboBoxItem Content="Неактивен"/>
+                                <ComboBoxItem Content="Черновик"/>
+                            </ComboBox>
                         </StackPanel>
-
-                        <TextBlock Text="Статус:" Margin="0,0,0,5"/>
-                        <ComboBox SelectedItem="{Binding Status}" Margin="0,0,0,10">
-                            <ComboBoxItem Content="Активен"/>
-                            <ComboBoxItem Content="Неактивен"/>
-                            <ComboBoxItem Content="Черновик"/>
-                        </ComboBox>
                     </StackPanel>
-                </StackPanel>
 
-                <!-- Правая колонка - целевые показатели -->
-                <StackPanel Grid.Column="1">
-                    <TextBlock Text="Целевые показатели:" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <!-- Правая колонка - целевые показатели -->
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Целевые показатели:" FontWeight="Bold" Margin="0,0,0,10"/>
 
-                    <StackPanel>
-                        <TextBlock Text="Калории (ккал/день):" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding TargetCalories}" 
-                                 Margin="0,0,0,10"/>
+                        <StackPanel>
+                            <TextBlock Text="Калории (ккал/день):" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding TargetCalories}" 
+                                     Margin="0,0,0,10"/>
 
-                        <TextBlock Text="Белки (г/день):" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding TargetProtein}" 
-                                 Margin="0,0,0,10"/>
+                            <TextBlock Text="Белки (г/день):" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding TargetProtein}" 
+                                     Margin="0,0,0,10"/>
 
-                        <TextBlock Text="Жиры (г/день):" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding TargetFat}" 
-                                 Margin="0,0,0,10"/>
+                            <TextBlock Text="Жиры (г/день):" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding TargetFat}" 
+                                     Margin="0,0,0,10"/>
 
-                        <TextBlock Text="Углеводы (г/день):" Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding TargetCarbs}" 
-                                 Margin="0,0,0,10"/>
+                            <TextBlock Text="Углеводы (г/день):" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding TargetCarbs}" 
+                                     Margin="0,0,0,10"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-            </Grid>
-        </GroupBox>
+                </Grid>
+            </GroupBox>
 
-        <!-- Рекомендуемые блюда -->
-        <GroupBox Grid.Row="3" Header="Рекомендуемые блюда" Padding="10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <!-- Добавление продуктов -->
+            <GroupBox Grid.Row="3" Header="Добавление продуктов в план" Padding="10" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <!-- Список блюд -->
-                <DataGrid Grid.Column="0" 
-                          AutoGenerateColumns="False"
-                          ItemsSource="{Binding RecommendedDishes}"
-                          SelectedItem="{Binding SelectedDish}"
-                          CanUserAddRows="False"
-                          IsReadOnly="True">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Название" 
-                                            Binding="{Binding DishName}" 
-                                            Width="*"/>
-                        <DataGridTextColumn Header="Калории" 
-                                            Binding="{Binding TotalCalories}" 
-                                            Width="70"/>
-                        <DataGridTextColumn Header="Белки" 
-                                            Binding="{Binding TotalProtein}" 
-                                            Width="70"/>
-                        <DataGridTextColumn Header="Жиры" 
-                                            Binding="{Binding TotalFat}" 
-                                            Width="70"/>
-                        <DataGridTextColumn Header="Углеводы" 
-                                            Binding="{Binding TotalCarbohydrates}" 
-                                            Width="70"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-
-                <!-- Кнопки управления -->
-                <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                    <Button Content="Добавить в план" 
-                            Command="{Binding AddDishToPlanCommand}"
+                    <!-- Панель добавления продукта -->
+                    <Border Grid.Row="0" 
+                            BorderBrush="#E0E0E0" 
+                            BorderThickness="1" 
+                            CornerRadius="5" 
+                            Padding="10"
                             Margin="0,0,0,10"
-                            Padding="10,5"
-                            Width="120"/>
+                            Background="#F9F9F9">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                    <Button Content="Удалить из плана" 
-                            Command="{Binding RemoveDishFromPlanCommand}"
-                            Margin="0,0,0,10"
-                            Padding="10,5"
-                            Width="120"/>
+                            <!-- Прием пищи -->
+                            <TextBlock Grid.Column="0" 
+                                       Text="Прием:" 
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,3,0"
+                                       FontSize="12"/>
+
+                            <ComboBox Grid.Column="1" 
+                                      ItemsSource="{Binding MealTypes}" 
+                                      SelectedItem="{Binding SelectedMealType}"
+                                      MinWidth="90">
+                                <ComboBoxItem Content="Завтрак"/>
+                                <ComboBoxItem Content="Обед"/>
+                                <ComboBoxItem Content="Ужин"/>
+                            </ComboBox>
+
+                            <!-- Продукт -->
+                            <TextBlock Grid.Column="3" 
+                                       Text="Продукт:" 
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,3,0"
+                                       FontSize="12"/>
+
+                            <ComboBox Grid.Column="4" 
+                                      ItemsSource="{Binding AllProducts}" 
+                                      SelectedItem="{Binding SelectedProduct}"
+                                      DisplayMemberPath="ProductName" 
+                                      MinWidth="120"/>
+
+                            <!-- Количество -->
+                            <TextBlock Grid.Column="6" 
+                                       Text="Кол-во:" 
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,3,0"
+                                       FontSize="12"/>
+
+                            <TextBox Grid.Column="7" 
+                                     Text="{Binding SelectedQuantity}"
+                                     VerticalContentAlignment="Center"
+                                     MaxLength="6"/>
+
+                            <TextBlock Grid.Column="8" 
+                                       Text="г" 
+                                       VerticalAlignment="Center" 
+                                       Margin="2,0,0,0"
+                                       FontSize="12"/>
+
+                            <!-- Кнопка добавления -->
+                            <Button Grid.Column="9" 
+                                    Content="Добавить" 
+                                    Command="{Binding AddProductToMealCommand}" 
+                                    Padding="10,5" 
+                                    Background="#4CAF50" 
+                                    Foreground="White"
+                                    FontWeight="Bold"
+                                    MinWidth="80"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Вкладки с приемами пищи -->
+                    <TabControl Grid.Row="1">
+                        <TabItem Header="Завтрак">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Сводка по завтраку -->
+                                <Border Grid.Row="0" 
+                                        BorderBrush="#FF9800" 
+                                        BorderThickness="1" 
+                                        CornerRadius="5" 
+                                        Padding="10"
+                                        Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Сводка по завтраку" FontWeight="Bold"/>
+                                        <WrapPanel>
+                                            <TextBlock Text="Калории: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding BreakfastSummary.TotalCalories, StringFormat={}{0:F0} ккал}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Белки: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding BreakfastSummary.TotalProtein, StringFormat={}{0:F1} г}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Жиры: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding BreakfastSummary.TotalFat, StringFormat={}{0:F1} г}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Углеводы: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding BreakfastSummary.TotalCarbs, StringFormat={}{0:F1} г}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Список продуктов завтрака -->
+                                <DataGrid Grid.Row="1" 
+                                          ItemsSource="{Binding BreakfastItems}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          MinHeight="150"
+                                          MaxHeight="300">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Продукт" 
+                                                            Binding="{Binding ProductName}" 
+                                                            Width="*"/>
+                                        <DataGridTextColumn Header="Кол-во" 
+                                                            Binding="{Binding Quantity, StringFormat={}{0} г}" 
+                                                            Width="80"/>
+                                        <DataGridTextColumn Header="Ккал" 
+                                                            Binding="{Binding Calories, StringFormat={}{0:F0}}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="Б" 
+                                                            Binding="{Binding Protein, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="Ж" 
+                                                            Binding="{Binding Fat, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="У" 
+                                                            Binding="{Binding Carbs, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- Кнопки управления -->
+                                <StackPanel Grid.Row="2" 
+                                            Orientation="Horizontal" 
+                                            HorizontalAlignment="Right"
+                                            Margin="0,10,0,0">
+                                    <Button Content="Удалить последний" 
+                                            Command="{Binding RemoveProductFromMealCommand}"
+                                            Padding="8,4"
+                                            Margin="0,0,10,0"/>
+
+                                    <Button Content="Очистить завтрак" 
+                                            Command="{Binding ClearMealCommand}"
+                                            Padding="8,4"
+                                            Background="#F44336"
+                                            Foreground="White"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Обед">
+                            <!-- Аналогичная структура как для завтрака -->
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" 
+                                        BorderBrush="#4CAF50" 
+                                        BorderThickness="1" 
+                                        CornerRadius="5" 
+                                        Padding="10"
+                                        Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Сводка по обеду" FontWeight="Bold"/>
+                                        <WrapPanel>
+                                            <TextBlock Text="Калории: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding LunchSummary.TotalCalories, StringFormat={}{0:F0} ккал}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Белки: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding LunchSummary.TotalProtein, StringFormat={}{0:F1} г}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Жиры: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding LunchSummary.TotalFat, StringFormat={}{0:F1} г}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Углеводы: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding LunchSummary.TotalCarbs, StringFormat={}{0:F1} г}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <DataGrid Grid.Row="1" 
+                                          ItemsSource="{Binding LunchItems}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          MinHeight="150"
+                                          MaxHeight="300">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Продукт" 
+                                                            Binding="{Binding ProductName}" 
+                                                            Width="*"/>
+                                        <DataGridTextColumn Header="Кол-во" 
+                                                            Binding="{Binding Quantity, StringFormat={}{0} г}" 
+                                                            Width="80"/>
+                                        <DataGridTextColumn Header="Ккал" 
+                                                            Binding="{Binding Calories, StringFormat={}{0:F0}}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="Б" 
+                                                            Binding="{Binding Protein, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="Ж" 
+                                                            Binding="{Binding Fat, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="У" 
+                                                            Binding="{Binding Carbs, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="2" 
+                                            Orientation="Horizontal" 
+                                            HorizontalAlignment="Right"
+                                            Margin="0,10,0,0">
+                                    <Button Content="Удалить последний" 
+                                            Command="{Binding RemoveProductFromMealCommand}"
+                                            Padding="8,4"
+                                            Margin="0,0,10,0"/>
+
+                                    <Button Content="Очистить обед" 
+                                            Command="{Binding ClearMealCommand}"
+                                            Padding="8,4"
+                                            Background="#F44336"
+                                            Foreground="White"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+
+                        <TabItem Header="Ужин">
+                            <!-- Аналогичная структура как для завтрака -->
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" 
+                                        BorderBrush="#2196F3" 
+                                        BorderThickness="1" 
+                                        CornerRadius="5" 
+                                        Padding="10"
+                                        Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Сводка по ужину" FontWeight="Bold"/>
+                                        <WrapPanel>
+                                            <TextBlock Text="Калории: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding DinnerSummary.TotalCalories, StringFormat={}{0:F0} ккал}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Белки: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding DinnerSummary.TotalProtein, StringFormat={}{0:F1} г}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Жиры: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding DinnerSummary.TotalFat, StringFormat={}{0:F1} г}" 
+                                                       Margin="0,0,10,0"/>
+
+                                            <TextBlock Text="Углеводы: " FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding DinnerSummary.TotalCarbs, StringFormat={}{0:F1} г}"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <DataGrid Grid.Row="1" 
+                                          ItemsSource="{Binding DinnerItems}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          MinHeight="150"
+                                          MaxHeight="300">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Продукт" 
+                                                            Binding="{Binding ProductName}" 
+                                                            Width="*"/>
+                                        <DataGridTextColumn Header="Кол-во" 
+                                                            Binding="{Binding Quantity, StringFormat={}{0} г}" 
+                                                            Width="80"/>
+                                        <DataGridTextColumn Header="Ккал" 
+                                                            Binding="{Binding Calories, StringFormat={}{0:F0}}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="Б" 
+                                                            Binding="{Binding Protein, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="Ж" 
+                                                            Binding="{Binding Fat, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                        <DataGridTextColumn Header="У" 
+                                                            Binding="{Binding Carbs, StringFormat={}{0:F1} г}" 
+                                                            Width="70"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="2" 
+                                            Orientation="Horizontal" 
+                                            HorizontalAlignment="Right"
+                                            Margin="0,10,0,0">
+                                    <Button Content="Удалить последний" 
+                                            Command="{Binding RemoveProductFromMealCommand}"
+                                            Padding="8,4"
+                                            Margin="0,0,10,0"/>
+
+                                    <Button Content="Очистить ужин" 
+                                            Command="{Binding ClearMealCommand}"
+                                            Padding="8,4"
+                                            Background="#F44336"
+                                            Foreground="White"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </GroupBox>
+
+            <!-- Панель действий -->
+            <Border Grid.Row="4" 
+                    BorderBrush="#E0E0E0" 
+                    BorderThickness="1" 
+                    CornerRadius="5" 
+                    Padding="15"
+                    Background="#F5F5F5">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="Сгенерировать автоплан" 
+                            Command="{Binding GenerateAutoPlanCommand}"
+                            Padding="15,8"
+                            Margin="0,0,10,0"
+                            Background="#9C27B0"
+                            Foreground="White"
+                            MinWidth="150"/>
 
                     <Button Content="Создать план" 
                             Command="{Binding CreatePlanCommand}"
-                            Margin="0,0,0,10"
-                            Padding="15,8"
-                            Width="120"
+                            Padding="20,10"
                             Background="#4CAF50"
                             Foreground="White"
-                            FontWeight="Bold"/>
-
-                    <Button Content="Сгенерировать план" 
-                            Command="{Binding GenerateMealPlanCommand}"
-                            Padding="10,5"
-                            Width="120"/>
+                            FontWeight="Bold"
+                            MinWidth="150"
+                            FontSize="14"/>
                 </StackPanel>
-            </Grid>
-        </GroupBox>
-    </Grid>
+            </Border>
+        </Grid>
+    </ScrollViewer>
 </UserControl>

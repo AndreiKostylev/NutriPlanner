@@ -19,7 +19,7 @@ namespace NutriPlanner.Migrations
                 {
                     ProductId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProductName = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ProductName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Category = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Calories = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Protein = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
@@ -65,6 +65,7 @@ namespace NutriPlanner.Migrations
                     DailyFatTarget = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     DailyCarbsTarget = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     RegistrationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
                     RoleId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -196,7 +197,42 @@ namespace NutriPlanner.Migrations
                     { 2, 250m, 0m, "Мясо", 15m, "Говядина", 26m, "г" },
                     { 3, 130m, 28m, "Крупы", 0.3m, "Рис вареный", 2.7m, "г" },
                     { 4, 132m, 25m, "Крупы", 2.3m, "Гречка", 4.5m, "г" },
-                    { 5, 52m, 14m, "Фрукты", 0.2m, "Яблоко", 0.3m, "г" }
+                    { 5, 52m, 14m, "Фрукты", 0.2m, "Яблоко", 0.3m, "г" },
+                    { 6, 242m, 0m, "Мясо", 16m, "Свинина", 25m, "г" },
+                    { 7, 135m, 0m, "Мясо", 1m, "Индейка", 29m, "г" },
+                    { 8, 541m, 1.4m, "Мясо", 42m, "Бекон", 37m, "г" },
+                    { 9, 208m, 0m, "Рыба", 13m, "Лосось", 20m, "г" },
+                    { 10, 184m, 0m, "Рыба", 6m, "Тунец", 30m, "г" },
+                    { 11, 82m, 0m, "Рыба", 0.7m, "Треска", 18m, "г" },
+                    { 12, 85m, 0m, "Морепродукты", 0.5m, "Креветки", 20m, "г" },
+                    { 13, 155m, 1.1m, "Яйца", 11m, "Яйцо куриное", 13m, "шт" },
+                    { 14, 121m, 1.8m, "Молочные", 5m, "Творог 5%", 17m, "г" },
+                    { 15, 404m, 1.3m, "Молочные", 34m, "Сыр Чеддер", 23m, "г" },
+                    { 16, 52m, 4.7m, "Молочные", 2.5m, "Молоко 2.5%", 2.9m, "мл" },
+                    { 17, 59m, 3.6m, "Молочные", 0.4m, "Йогурт греческий", 10m, "г" },
+                    { 18, 68m, 12m, "Крупы", 1.4m, "Овсянка", 2.4m, "г" },
+                    { 19, 158m, 31m, "Крупы", 0.9m, "Макароны вареные", 5.8m, "г" },
+                    { 20, 247m, 41m, "Хлеб", 3.4m, "Хлеб цельнозерновой", 13m, "г" },
+                    { 21, 77m, 17m, "Овощи", 0.1m, "Картофель", 2m, "г" },
+                    { 22, 41m, 10m, "Овощи", 0.2m, "Морковь", 0.9m, "г" },
+                    { 23, 18m, 3.9m, "Овощи", 0.2m, "Помидор", 0.9m, "г" },
+                    { 24, 15m, 3.6m, "Овощи", 0.1m, "Огурец", 0.7m, "г" },
+                    { 25, 34m, 7m, "Овощи", 0.4m, "Брокколи", 2.8m, "г" },
+                    { 26, 23m, 3.6m, "Овощи", 0.4m, "Шпинат", 2.9m, "г" },
+                    { 27, 89m, 23m, "Фрукты", 0.3m, "Банан", 1.1m, "г" },
+                    { 28, 47m, 12m, "Фрукты", 0.1m, "Апельсин", 0.9m, "г" },
+                    { 29, 32m, 7.7m, "Фрукты", 0.3m, "Клубника", 0.7m, "г" },
+                    { 30, 160m, 9m, "Фрукты", 15m, "Авокадо", 2m, "г" },
+                    { 31, 579m, 22m, "Орехи", 50m, "Миндаль", 21m, "г" },
+                    { 32, 654m, 14m, "Орехи", 65m, "Грецкие орехи", 15m, "г" },
+                    { 33, 567m, 16m, "Орехи", 49m, "Арахис", 26m, "г" },
+                    { 34, 884m, 0m, "Масла", 100m, "Оливковое масло", 0m, "мл" },
+                    { 35, 717m, 0.1m, "Масла", 81m, "Сливочное масло", 0.9m, "г" },
+                    { 36, 116m, 20m, "Бобовые", 0.4m, "Чечевица вареная", 9m, "г" },
+                    { 37, 127m, 23m, "Бобовые", 0.5m, "Фасоль", 9m, "г" },
+                    { 38, 0m, 0m, "Напитки", 0m, "Вода", 0m, "мл" },
+                    { 39, 1m, 0.3m, "Напитки", 0m, "Чай черный", 0m, "мл" },
+                    { 40, 1m, 0m, "Напитки", 0m, "Кофе черный", 0.1m, "мл" }
                 });
 
             migrationBuilder.InsertData(
@@ -205,13 +241,18 @@ namespace NutriPlanner.Migrations
                 values: new object[,]
                 {
                     { 1, "User" },
-                    { 2, "Admin" }
+                    { 2, "Dietitian" },
+                    { 3, "Admin" }
                 });
 
             migrationBuilder.InsertData(
                 table: "Users",
-                columns: new[] { "UserId", "ActivityLevel", "Age", "DailyCalorieTarget", "DailyCarbsTarget", "DailyFatTarget", "DailyProteinTarget", "Email", "Gender", "Goal", "Height", "PasswordHash", "RegistrationDate", "RoleId", "Username", "Weight" },
-                values: new object[] { 1, "Moderate", 30, 2500m, 281m, 83m, 150m, "admin@nutriplanner.com", "Male", "Maintenance", 180m, "hashed_password", new DateTime(2025, 11, 19, 1, 18, 22, 923, DateTimeKind.Local).AddTicks(4181), 2, "admin", 75m });
+                columns: new[] { "UserId", "ActivityLevel", "Age", "DailyCalorieTarget", "DailyCarbsTarget", "DailyFatTarget", "DailyProteinTarget", "Email", "Gender", "Goal", "Height", "IsActive", "PasswordHash", "RegistrationDate", "RoleId", "Username", "Weight" },
+                values: new object[,]
+                {
+                    { 1, "Moderate", 30, 2500m, 281m, 83m, 150m, "admin@nutriplanner.com", "Male", "Maintenance", 180m, true, "hashed_password", new DateTime(2025, 12, 22, 22, 39, 16, 789, DateTimeKind.Local).AddTicks(9987), 3, "admin", 75m },
+                    { 2, "Moderate", 35, 2200m, 247m, 73m, 130m, "dietitian@nutriplanner.com", "Female", "Maintenance", 165m, true, "hashed_password", new DateTime(2025, 12, 22, 22, 39, 16, 789, DateTimeKind.Local).AddTicks(9999), 2, "dietitian", 60m }
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Dishes_UserId",

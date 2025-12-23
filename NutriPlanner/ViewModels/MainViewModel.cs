@@ -62,7 +62,6 @@ namespace NutriPlanner.ViewModels
         public NutritionPlanViewModel NutritionPlanVM { get; private set; } // Только для диетологов
         public DietitianDashboardViewModel DietitianDashboardVM { get; private set; }
         public ClientManagementViewModel ClientManagementVM { get; private set; }
-        public MealTemplatesViewModel MealTemplatesVM { get; private set; }
         public UserPlanViewViewModel UserPlanViewVM { get; private set; } // Для просмотра планов
 
         // Команды
@@ -71,7 +70,7 @@ namespace NutriPlanner.ViewModels
         public ICommand ShowNutritionPlanCommand { get; private set; }
         public ICommand ShowDietitianDashboardCommand { get; private set; }
         public ICommand ShowClientManagementCommand { get; private set; }
-        public ICommand ShowMealTemplatesCommand { get; private set; }
+        public ICommand ShowMealTemplatesCommand { get; private set; } // УДАЛИТЬ ЭТУ КОМАНДУ
         public ICommand ShowUserPlanViewCommand { get; private set; }
         public ICommand ShowProfileCommand { get; private set; }
         public ICommand ShowAboutCommand { get; private set; }
@@ -90,7 +89,7 @@ namespace NutriPlanner.ViewModels
             ShowNutritionPlanCommand = new RelayCommand(ShowNutritionPlan);
             ShowDietitianDashboardCommand = new RelayCommand(ShowDietitianDashboard);
             ShowClientManagementCommand = new RelayCommand(ShowClientManagement);
-            ShowMealTemplatesCommand = new RelayCommand(ShowMealTemplates);
+            // УДАЛИТЬ: ShowMealTemplatesCommand = new RelayCommand(ShowMealTemplates);
             ShowUserPlanViewCommand = new RelayCommand(ShowUserPlanView);
             ShowProfileCommand = new RelayCommand(ShowProfile);
             ShowAboutCommand = new RelayCommand(ShowAbout);
@@ -116,7 +115,7 @@ namespace NutriPlanner.ViewModels
                         NutritionPlanVM = new NutritionPlanViewModel(this, CurrentUser);
                         DietitianDashboardVM = new DietitianDashboardViewModel(this);
                         ClientManagementVM = new ClientManagementViewModel(this, CurrentUser);
-                        MealTemplatesVM = new MealTemplatesViewModel(this, CurrentUser);
+                        // MealTemplatesVM больше не создаем
                     }
 
                     // По умолчанию показываем дневник питания
@@ -227,21 +226,6 @@ namespace NutriPlanner.ViewModels
             }
         }
 
-        private void ShowMealTemplates()
-        {
-            if (!IsDietitianOrAdmin)
-            {
-                MessageBox.Show("У вас нет прав для управления шаблонами блюд!",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (MealTemplatesVM != null)
-            {
-                CurrentView = MealTemplatesVM;
-                StatusMessage = "Режим: Шаблоны блюд";
-            }
-        }
 
         private void ShowProfile()
         {

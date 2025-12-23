@@ -64,9 +64,7 @@
             <views:ClientManagementView />
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type vm:MealTemplatesViewModel}">
-            <views:MealTemplatesView />
-        </DataTemplate>
+    
 
         <DataTemplate DataType="{x:Type vm:UserPlanViewViewModel}">
             <views:UserPlanViewView />
@@ -181,13 +179,7 @@
                             Style="{StaticResource MenuButtonStyle}"
                             ToolTip="Управление клиентами и их планами"/>
 
-                    <Button Content="🍽️ Шаблоны блюд"
-                            Margin="0,2"
-                            Padding="10,8"
-                            Command="{Binding ShowMealTemplatesCommand}"
-                            Visibility="{Binding IsDietitianOrAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
-                            Style="{StaticResource MenuButtonStyle}"
-                            ToolTip="Создание шаблонов блюд для клиентов"/>
+       
 
                     <Button Content="📅 Создание планов"
                             Margin="0,2"
