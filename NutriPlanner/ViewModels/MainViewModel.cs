@@ -13,6 +13,9 @@ namespace NutriPlanner.ViewModels
     /// <summary>
     /// Главный ViewModel приложения
     /// </summary>
+    /// <summary>
+    /// Главный ViewModel приложения
+    /// </summary>
     public class MainViewModel : BaseViewModel
     {
         private User _currentUser;
@@ -59,10 +62,11 @@ namespace NutriPlanner.ViewModels
         // ViewModels
         public DailyNutritionViewModel DailyNutritionVM { get; private set; }
         public ProductsViewModel ProductsVM { get; private set; }
-        public NutritionPlanViewModel NutritionPlanVM { get; private set; } // Только для диетологов
+        public NutritionPlanViewModel NutritionPlanVM { get; private set; }
         public DietitianDashboardViewModel DietitianDashboardVM { get; private set; }
         public ClientManagementViewModel ClientManagementVM { get; private set; }
-        public UserPlanViewViewModel UserPlanViewVM { get; private set; } // Для просмотра планов
+        public UserPlanViewViewModel UserPlanViewVM { get; private set; }
+        public AdminPanelViewModel AdminPanelVM { get; private set; } // НОВОЕ
 
         // Команды
         public ICommand ShowDailyNutritionCommand { get; private set; }
@@ -70,9 +74,8 @@ namespace NutriPlanner.ViewModels
         public ICommand ShowNutritionPlanCommand { get; private set; }
         public ICommand ShowDietitianDashboardCommand { get; private set; }
         public ICommand ShowClientManagementCommand { get; private set; }
-        public ICommand ShowMealTemplatesCommand { get; private set; } // УДАЛИТЬ ЭТУ КОМАНДУ
         public ICommand ShowUserPlanViewCommand { get; private set; }
-        public ICommand ShowProfileCommand { get; private set; }
+        public ICommand ShowAdminPanelCommand { get; private set; } // НОВОЕ
         public ICommand ShowAboutCommand { get; private set; }
         public ICommand LogoutCommand { get; private set; }
 
@@ -89,9 +92,8 @@ namespace NutriPlanner.ViewModels
             ShowNutritionPlanCommand = new RelayCommand(ShowNutritionPlan);
             ShowDietitianDashboardCommand = new RelayCommand(ShowDietitianDashboard);
             ShowClientManagementCommand = new RelayCommand(ShowClientManagement);
-            // УДАЛИТЬ: ShowMealTemplatesCommand = new RelayCommand(ShowMealTemplates);
             ShowUserPlanViewCommand = new RelayCommand(ShowUserPlanView);
-            ShowProfileCommand = new RelayCommand(ShowProfile);
+            ShowAdminPanelCommand = new RelayCommand(ShowAdminPanel); // НОВОЕ
             ShowAboutCommand = new RelayCommand(ShowAbout);
             LogoutCommand = new RelayCommand(Logout);
         }
@@ -102,23 +104,32 @@ namespace NutriPlanner.ViewModels
             {
                 if (CurrentUser != null)
                 {
-                    // Всегда создаем базовые ViewModels для всех пользователей
-                    DailyNutritionVM = new DailyNutritionViewModel(this, CurrentUser);
-                    ProductsVM = new ProductsViewModel(this, CurrentUser);
+                    // Для обычных пользователей
+                    if (IsUser)
+                    {
+                        DailyNutritionVM = new DailyNutritionViewModel(this, CurrentUser);
+                        ProductsVM = new ProductsViewModel(this, CurrentUser);
+                        UserPlanViewVM = new UserPlanViewViewModel(this, CurrentUser);
+                    }
 
-                    // UserPlanViewViewModel для просмотра планов (доступен всем)
-                    UserPlanViewVM = new UserPlanViewViewModel(this, CurrentUser);
-
-                    // NutritionPlanVM создаем ТОЛЬКО для диетологов и админов
                     if (IsDietitianOrAdmin)
                     {
+                        // Для диетологов и админов
+                        DailyNutritionVM = new DailyNutritionViewModel(this, CurrentUser);
+                        ProductsVM = new ProductsViewModel(this, CurrentUser);
+                        UserPlanViewVM = new UserPlanViewViewModel(this, CurrentUser);
                         NutritionPlanVM = new NutritionPlanViewModel(this, CurrentUser);
                         DietitianDashboardVM = new DietitianDashboardViewModel(this);
                         ClientManagementVM = new ClientManagementViewModel(this, CurrentUser);
-                        // MealTemplatesVM больше не создаем
                     }
 
-                    // По умолчанию показываем дневник питания
+                    // Только для админов
+                    if (IsAdmin)
+                    {
+                        AdminPanelVM = new AdminPanelViewModel(this, CurrentUser); // НОВОЕ
+                    }
+
+                    // По умолчанию показываем дневник питания для всех
                     ShowDailyNutrition();
 
                     StatusMessage = $"Добро пожаловать, {CurrentUser.Username}!";
@@ -152,7 +163,6 @@ namespace NutriPlanner.ViewModels
 
         private void ShowNutritionPlan()
         {
-            // Проверяем права доступа
             if (!IsDietitianOrAdmin)
             {
                 MessageBox.Show("Создание планов питания доступно только диетологам и администраторам.\n\n" +
@@ -226,20 +236,26 @@ namespace NutriPlanner.ViewModels
             }
         }
 
-
-        private void ShowProfile()
+        // НОВЫЙ МЕТОД: Админ-панель
+        private void ShowAdminPanel()
         {
-            StatusMessage = "Режим: Профиль пользователя";
-            MessageBox.Show($"Профиль: {CurrentUser?.Username}\n" +
-                          $"Роль: {CurrentUser?.GetRoleName()}\n" +
-                          $"Email: {CurrentUser?.Email}\n" +
-                          $"Возраст: {CurrentUser?.Age}\n" +
-                          $"Рост: {CurrentUser?.Height} см\n" +
-                          $"Вес: {CurrentUser?.Weight} кг\n" +
-                          $"Цель: {CurrentUser?.Goal}\n" +
-                          $"Активность: {CurrentUser?.ActivityLevel}\n" +
-                          $"Цели: {CurrentUser?.DailyCalorieTarget} ккал/день",
-                "Профиль", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (!IsAdmin)
+            {
+                MessageBox.Show("У вас нет прав для доступа к панели администратора!",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (AdminPanelVM != null)
+            {
+                CurrentView = AdminPanelVM;
+                StatusMessage = "Режим: Панель администратора";
+            }
+            else
+            {
+                MessageBox.Show("Панель администратора не инициализирована",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ShowAbout()
@@ -267,9 +283,16 @@ namespace NutriPlanner.ViewModels
             {
                 try
                 {
-                    Application.Current.MainWindow?.Close();
-                    var loginWindow = new LoginWindow();
-                    loginWindow.Show();
+                    var currentWindow = Application.Current.Windows
+                        .OfType<Window>()
+                        .FirstOrDefault(x => x is MainWindow);
+
+                    if (currentWindow != null)
+                    {
+                        var loginWindow = new LoginWindow();
+                        currentWindow.Close();
+                        loginWindow.Show();
+                    }
                 }
                 catch (Exception ex)
                 {

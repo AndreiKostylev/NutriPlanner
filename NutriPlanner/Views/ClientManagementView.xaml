@@ -96,13 +96,7 @@
                         Padding="15,8"
                         Margin="0,0,10,0"
                         Width="120"/>
-                <Button Content="Создать план" 
-                        Command="{Binding CreatePlanForClientCommand}"
-                        Padding="15,8"
-                        Margin="0,0,10,0"
-                        Width="120"
-                        Background="#4CAF50"
-                        Foreground="White"/>
+                <!-- УДАЛЕНА КНОПКА "Создать план" -->
                 <Button Content="Просмотр дневника" 
                         Command="{Binding ViewClientDiaryCommand}"
                         Padding="15,8"

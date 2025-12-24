@@ -4,6 +4,8 @@
              xmlns:local="clr-namespace:NutriPlanner"
              Startup="Application_Startup">
     <Application.Resources>
-         
+        
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+       
     </Application.Resources>
 </Application>

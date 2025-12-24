@@ -23,7 +23,7 @@ namespace NutriPlanner.ViewModels
     {
         private readonly MainViewModel _mainVM;
         private readonly User _currentUser;
-        private DatabaseContext _context; 
+        private DatabaseContext _context;
 
         private ObservableCollection<UserProfileDto> _clients;
         private UserProfileDto _selectedClient;
@@ -85,10 +85,9 @@ namespace NutriPlanner.ViewModels
         public ObservableCollection<FoodEntryDto> ClientDiaryEntries { get; set; }
         public DailyNutritionDto ClientDailyNutrition { get; set; }
 
-        // Команды
+        // Команды (УДАЛЕНА CreatePlanForClientCommand)
         public ICommand LoadClientsCommand { get; }
         public ICommand EditClientCommand { get; }
-        public ICommand CreatePlanForClientCommand { get; }
         public ICommand ViewClientDiaryCommand { get; }
         public ICommand ExportClientDataCommand { get; }
         public ICommand DeletePlanCommand { get; }
@@ -115,7 +114,6 @@ namespace NutriPlanner.ViewModels
 
             LoadClientsCommand = new RelayCommand(() => LoadClients());
             EditClientCommand = new RelayCommand(EditClient, () => CanEditClient);
-            CreatePlanForClientCommand = new RelayCommand(CreatePlanForClient, () => CanEditClient);
             ViewClientDiaryCommand = new RelayCommand(ViewClientDiary, () => CanEditClient);
             ExportClientDataCommand = new RelayCommand(ExportClientData, () => CanEditClient);
             DeletePlanCommand = new RelayCommand(DeletePlan, () => SelectedPlan != null);
@@ -522,61 +520,6 @@ namespace NutriPlanner.ViewModels
         private decimal CalculateDailyCarbs(User user)
         {
             return Math.Round(CalculateDailyCalories(user) * 0.45m / 4, 0);
-        }
-
-        private async void CreatePlanForClient()
-        {
-            if (SelectedClient == null) return;
-
-            try
-            {
-                // Просим ввести название плана
-                string planName = ShowSimpleInputDialog("Введите название плана питания:",
-                    $"План для {SelectedClient.Username} от {DateTime.Now:dd.MM.yyyy}");
-
-                if (string.IsNullOrEmpty(planName)) return;
-
-                var confirm = MessageBox.Show(
-                    $"Создать план питания для клиента {SelectedClient.Username}?\n" +
-                    $"Название: {planName}\n" +
-                    $"Калории: {SelectedClient.DailyCalorieTarget} ккал/день\n" +
-                    $"Белки: {SelectedClient.DailyProteinTarget} г/день\n" +
-                    $"Жиры: {SelectedClient.DailyFatTarget} г/день\n" +
-                    $"Углеводы: {SelectedClient.DailyCarbsTarget} г/день",
-                    "Создание плана питания",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (confirm == MessageBoxResult.Yes)
-                {
-                    // Используем новый контекст
-                    using var context = new DatabaseContext();
-
-                    var plan = new NutritionPlan
-                    {
-                        UserId = SelectedClient.UserId,
-                        PlanName = planName,
-                        StartDate = DateTime.Today,
-                        EndDate = DateTime.Today.AddDays(7),
-                        DailyCalories = SelectedClient.DailyCalorieTarget,
-                        DailyProtein = SelectedClient.DailyProteinTarget,
-                        DailyFat = SelectedClient.DailyFatTarget,
-                        DailyCarbohydrates = SelectedClient.DailyCarbsTarget,
-                        Status = "Активен"
-                    };
-
-                    context.NutritionPlans.Add(plan);
-                    await context.SaveChangesAsync();
-
-                    LoadClientPlans();
-                    _mainVM.UpdateStatus($"Создан план питания '{planName}' для {SelectedClient.Username}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _mainVM.UpdateStatus($"Ошибка создания плана: {ex.Message}");
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
         }
 
         private void ViewClientDiary()

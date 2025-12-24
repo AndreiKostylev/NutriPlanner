@@ -20,7 +20,7 @@ namespace NutriPlanner.ViewModels
     {
         private readonly MainViewModel _mainVM;
         private readonly User _currentUser;
-        private readonly DatabaseContext _context;
+        private DatabaseContext _context;
 
         // Клиенты для выбора
         private ObservableCollection<UserProfileDto> _clients;
@@ -30,7 +30,8 @@ namespace NutriPlanner.ViewModels
         private string _planName = "План питания";
         private DateTime _startDate = DateTime.Today;
         private DateTime _endDate = DateTime.Today.AddDays(7);
-        private string _status = "Активен";
+        private string _status = "Новый";
+        private string _description = "";
 
         // Цели плана
         private decimal _targetCalories;
@@ -46,11 +47,19 @@ namespace NutriPlanner.ViewModels
         private ProductDto _selectedProduct;
         private string _selectedMealType = "Завтрак";
         private decimal _selectedQuantity = 100;
+        private string _mealNotes = "";
 
         // Сводка по приемам пищи
         private MealSummary _breakfastSummary;
         private MealSummary _lunchSummary;
         private MealSummary _dinnerSummary;
+
+        // Для отслеживания текущей вкладки
+        private string _currentMealTab = "Завтрак";
+
+        // Коллекции для комбобоксов
+        public List<string> MealTypes { get; } = new List<string> { "Завтрак", "Обед", "Ужин" };
+        public List<string> StatusTypes { get; } = new List<string> { "Новый", "Отправлен", "Активен", "Неактивен" };
 
         public ObservableCollection<UserProfileDto> Clients
         {
@@ -98,6 +107,12 @@ namespace NutriPlanner.ViewModels
             set { _status = value; OnPropertyChanged(); }
         }
 
+        public string Description
+        {
+            get => _description;
+            set { _description = value; OnPropertyChanged(); }
+        }
+
         public decimal TargetCalories
         {
             get => _targetCalories;
@@ -131,19 +146,19 @@ namespace NutriPlanner.ViewModels
         public ObservableCollection<MealPlanItem> BreakfastItems
         {
             get => _breakfastItems;
-            set { _breakfastItems = value; OnPropertyChanged(); }
+            set { _breakfastItems = value; OnPropertyChanged(); UpdateMealSummaries(); }
         }
 
         public ObservableCollection<MealPlanItem> LunchItems
         {
             get => _lunchItems;
-            set { _lunchItems = value; OnPropertyChanged(); }
+            set { _lunchItems = value; OnPropertyChanged(); UpdateMealSummaries(); }
         }
 
         public ObservableCollection<MealPlanItem> DinnerItems
         {
             get => _dinnerItems;
-            set { _dinnerItems = value; OnPropertyChanged(); }
+            set { _dinnerItems = value; OnPropertyChanged(); UpdateMealSummaries(); }
         }
 
         public ProductDto SelectedProduct
@@ -155,13 +170,28 @@ namespace NutriPlanner.ViewModels
         public string SelectedMealType
         {
             get => _selectedMealType;
-            set { _selectedMealType = value; OnPropertyChanged(); }
+            set
+            {
+                if (_selectedMealType != value)
+                {
+                    _selectedMealType = value;
+                    OnPropertyChanged();
+                    // При изменении SelectedMealType обновляем CurrentMealTab
+                    CurrentMealTab = value;
+                }
+            }
         }
 
         public decimal SelectedQuantity
         {
             get => _selectedQuantity;
             set { _selectedQuantity = value; OnPropertyChanged(); }
+        }
+
+        public string MealNotes
+        {
+            get => _mealNotes;
+            set { _mealNotes = value; OnPropertyChanged(); }
         }
 
         public MealSummary BreakfastSummary
@@ -182,16 +212,32 @@ namespace NutriPlanner.ViewModels
             set { _dinnerSummary = value; OnPropertyChanged(); }
         }
 
+        public string CurrentMealTab
+        {
+            get => _currentMealTab;
+            set
+            {
+                if (_currentMealTab != value)
+                {
+                    _currentMealTab = value;
+                    OnPropertyChanged();
+                    // При изменении вкладки обновляем SelectedMealType
+                    SelectedMealType = value;
+                }
+            }
+        }
+
         public bool HasSelectedClient => SelectedClient != null;
 
-        // Команды
+        // Команды (УБРАНА GenerateAutoPlanCommand)
         public ICommand LoadClientsCommand { get; }
         public ICommand CreatePlanCommand { get; }
         public ICommand CalculateTargetsCommand { get; }
         public ICommand AddProductToMealCommand { get; }
         public ICommand RemoveProductFromMealCommand { get; }
         public ICommand ClearMealCommand { get; }
-        public ICommand GenerateAutoPlanCommand { get; }
+        public ICommand SendPlanToClientCommand { get; }
+        public ICommand AutoFillQuantitiesCommand { get; }
 
         public NutritionPlanViewModel(MainViewModel mainVM, User currentUser)
         {
@@ -199,12 +245,14 @@ namespace NutriPlanner.ViewModels
             _currentUser = currentUser;
             _context = new DatabaseContext();
 
+            // Инициализация коллекций
             Clients = new ObservableCollection<UserProfileDto>();
             AllProducts = new ObservableCollection<ProductDto>();
             BreakfastItems = new ObservableCollection<MealPlanItem>();
             LunchItems = new ObservableCollection<MealPlanItem>();
             DinnerItems = new ObservableCollection<MealPlanItem>();
 
+            // Инициализация сводок
             BreakfastSummary = new MealSummary { MealType = "Завтрак" };
             LunchSummary = new MealSummary { MealType = "Обед" };
             DinnerSummary = new MealSummary { MealType = "Ужин" };
@@ -212,10 +260,11 @@ namespace NutriPlanner.ViewModels
             LoadClientsCommand = new RelayCommand(LoadClients);
             CreatePlanCommand = new RelayCommand(CreatePlan, () => HasSelectedClient && !string.IsNullOrWhiteSpace(PlanName));
             CalculateTargetsCommand = new RelayCommand(CalculateTargets, () => HasSelectedClient);
-            AddProductToMealCommand = new RelayCommand(AddProductToMeal);
+            AddProductToMealCommand = new RelayCommand(AddProductToMeal, () => SelectedProduct != null && SelectedQuantity > 0);
             RemoveProductFromMealCommand = new RelayCommand(RemoveProductFromMeal);
             ClearMealCommand = new RelayCommand(ClearMeal);
-            GenerateAutoPlanCommand = new RelayCommand(GenerateAutoPlan);
+            SendPlanToClientCommand = new RelayCommand(SendPlanToClient, () => HasSelectedClient && !string.IsNullOrWhiteSpace(PlanName));
+            AutoFillQuantitiesCommand = new RelayCommand(AutoFillQuantities);
 
             // Загружаем клиентов только если это диетолог
             if (currentUser.IsDietitianOrAdmin())
@@ -240,30 +289,33 @@ namespace NutriPlanner.ViewModels
 
                 Clients.Clear();
 
-                var clients = await _context.Users
-                    .Include(u => u.Role)
-                    .Where(u => u.Role.RoleName == "User" && u.IsActive)
-                    .OrderBy(u => u.Username)
-                    .ToListAsync();
-
-                foreach (var client in clients)
+                using (var context = new DatabaseContext())
                 {
-                    Clients.Add(new UserProfileDto
+                    var clients = await context.Users
+                        .Include(u => u.Role)
+                        .Where(u => u.Role.RoleName == "User" && u.IsActive)
+                        .OrderBy(u => u.Username)
+                        .ToListAsync();
+
+                    foreach (var client in clients)
                     {
-                        UserId = client.UserId,
-                        Username = client.Username,
-                        Email = client.Email,
-                        Age = client.Age,
-                        Gender = client.Gender,
-                        Height = client.Height,
-                        Weight = client.Weight,
-                        ActivityLevel = client.ActivityLevel,
-                        Goal = client.Goal,
-                        DailyCalorieTarget = client.DailyCalorieTarget,
-                        DailyProteinTarget = client.DailyProteinTarget,
-                        DailyFatTarget = client.DailyFatTarget,
-                        DailyCarbsTarget = client.DailyCarbsTarget
-                    });
+                        Clients.Add(new UserProfileDto
+                        {
+                            UserId = client.UserId,
+                            Username = client.Username,
+                            Email = client.Email,
+                            Age = client.Age,
+                            Gender = client.Gender,
+                            Height = client.Height,
+                            Weight = client.Weight,
+                            ActivityLevel = client.ActivityLevel,
+                            Goal = client.Goal,
+                            DailyCalorieTarget = client.DailyCalorieTarget,
+                            DailyProteinTarget = client.DailyProteinTarget,
+                            DailyFatTarget = client.DailyFatTarget,
+                            DailyCarbsTarget = client.DailyCarbsTarget
+                        });
+                    }
                 }
 
                 if (Clients.Any())
@@ -290,23 +342,26 @@ namespace NutriPlanner.ViewModels
             {
                 AllProducts.Clear();
 
-                var products = await _context.Products
-                    .OrderBy(p => p.ProductName)
-                    .ToListAsync();
-
-                foreach (var product in products)
+                using (var context = new DatabaseContext())
                 {
-                    AllProducts.Add(new ProductDto
+                    var products = await context.Products
+                        .OrderBy(p => p.ProductName)
+                        .ToListAsync();
+
+                    foreach (var product in products)
                     {
-                        ProductId = product.ProductId,
-                        ProductName = product.ProductName,
-                        Category = product.Category,
-                        Calories = product.Calories,
-                        Protein = product.Protein,
-                        Fat = product.Fat,
-                        Carbohydrates = product.Carbohydrates,
-                        Unit = product.Unit
-                    });
+                        AllProducts.Add(new ProductDto
+                        {
+                            ProductId = product.ProductId,
+                            ProductName = product.ProductName,
+                            Category = product.Category,
+                            Calories = product.Calories,
+                            Protein = product.Protein,
+                            Fat = product.Fat,
+                            Carbohydrates = product.Carbohydrates,
+                            Unit = product.Unit
+                        });
+                    }
                 }
 
                 if (AllProducts.Any())
@@ -336,7 +391,7 @@ namespace NutriPlanner.ViewModels
             TargetFat = SelectedClient.DailyFatTarget;
             TargetCarbs = SelectedClient.DailyCarbsTarget;
 
-            PlanName = $"План для {SelectedClient.Username}";
+            PlanName = $"План для {SelectedClient.Username} от {DateTime.Now:dd.MM.yyyy}";
 
             // Очищаем предыдущий план
             BreakfastItems.Clear();
@@ -391,7 +446,12 @@ namespace NutriPlanner.ViewModels
             }
 
             var selectedCollection = GetSelectedMealCollection();
-            if (selectedCollection == null) return;
+            if (selectedCollection == null)
+            {
+                MessageBox.Show($"Не удалось определить коллекцию для приема пищи: {SelectedMealType}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             // Рассчитываем нутриенты для указанного количества
             var multiplier = SelectedQuantity / 100;
@@ -403,7 +463,8 @@ namespace NutriPlanner.ViewModels
                 Calories = Math.Round(SelectedProduct.Calories * multiplier, 1),
                 Protein = Math.Round(SelectedProduct.Protein * multiplier, 1),
                 Fat = Math.Round(SelectedProduct.Fat * multiplier, 1),
-                Carbs = Math.Round(SelectedProduct.Carbohydrates * multiplier, 1)
+                Carbs = Math.Round(SelectedProduct.Carbohydrates * multiplier, 1),
+                Notes = MealNotes
             };
 
             selectedCollection.Add(item);
@@ -411,8 +472,9 @@ namespace NutriPlanner.ViewModels
 
             _mainVM.UpdateStatus($"Добавлен {SelectedProduct.ProductName} в {SelectedMealType}");
 
-            // Сбрасываем количество
+            // Сбрасываем поля
             SelectedQuantity = 100;
+            MealNotes = "";
         }
 
         /// <summary>
@@ -421,17 +483,13 @@ namespace NutriPlanner.ViewModels
         private void RemoveProductFromMeal()
         {
             var selectedCollection = GetSelectedMealCollection();
-            if (selectedCollection == null) return;
+            if (selectedCollection == null || !selectedCollection.Any()) return;
 
-            // В реальном приложении здесь будет удаление выбранного элемента
-            // Сейчас удаляем последний добавленный
-            if (selectedCollection.Any())
-            {
-                var lastItem = selectedCollection.Last();
-                selectedCollection.Remove(lastItem);
-                UpdateMealSummaries();
-                _mainVM.UpdateStatus($"Удален {lastItem.ProductName} из {SelectedMealType}");
-            }
+            // Находим последний добавленный элемент
+            var lastItem = selectedCollection.Last();
+            selectedCollection.Remove(lastItem);
+            UpdateMealSummaries();
+            _mainVM.UpdateStatus($"Удален {lastItem.ProductName} из {SelectedMealType}");
         }
 
         /// <summary>
@@ -440,9 +498,7 @@ namespace NutriPlanner.ViewModels
         private void ClearMeal()
         {
             var selectedCollection = GetSelectedMealCollection();
-            if (selectedCollection == null) return;
-
-            if (!selectedCollection.Any()) return;
+            if (selectedCollection == null || !selectedCollection.Any()) return;
 
             var result = MessageBox.Show($"Очистить {SelectedMealType}?", "Подтверждение",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
@@ -456,72 +512,72 @@ namespace NutriPlanner.ViewModels
         }
 
         /// <summary>
-        /// Генерирует автоматический план питания
+        /// Автоматически заполняет количества продуктов
         /// </summary>
-        private async void GenerateAutoPlan()
+        private void AutoFillQuantities()
         {
-            if (SelectedClient == null || !AllProducts.Any()) return;
-
-            try
+            if (!BreakfastItems.Any() && !LunchItems.Any() && !DinnerItems.Any())
             {
-                // Очищаем текущий план
-                BreakfastItems.Clear();
-                LunchItems.Clear();
-                DinnerItems.Clear();
-
-                // Распределение калорий по приемам пищи
-                decimal breakfastCalories = TargetCalories * 0.25m;
-                decimal lunchCalories = TargetCalories * 0.35m;
-                decimal dinnerCalories = TargetCalories * 0.30m;
-
-                // Группируем продукты по категориям
-                var proteinProducts = AllProducts
-                    .Where(p => p.Protein > 15 && p.Calories < 300)
-                    .ToList();
-
-                var carbProducts = AllProducts
-                    .Where(p => p.Carbohydrates > 10 && p.Calories < 200)
-                    .ToList();
-
-                var fatProducts = AllProducts
-                    .Where(p => p.Fat > 5 && p.Fat < 30 && p.Calories < 500)
-                    .ToList();
-
-                var veggieProducts = AllProducts
-                    .Where(p => p.Category == "Овощи" || p.Category == "Фрукты")
-                    .ToList();
-
-                // Завтрак (белки + углеводы + фрукты)
-                AddProductToCollection(BreakfastItems, proteinProducts.FirstOrDefault(), 100);
-                AddProductToCollection(BreakfastItems, carbProducts.FirstOrDefault(p => p.Category == "Крупы"), 80);
-                AddProductToCollection(BreakfastItems, veggieProducts.FirstOrDefault(p => p.Category == "Фрукты"), 150);
-
-                // Обед (белки + углеводы + овощи)
-                AddProductToCollection(LunchItems, proteinProducts.Skip(1).FirstOrDefault(), 150);
-                AddProductToCollection(LunchItems, carbProducts.FirstOrDefault(p => p.Category == "Крупы" || p.Category == "Макароны"), 120);
-                AddProductToCollection(LunchItems, veggieProducts.FirstOrDefault(p => p.Category == "Овощи"), 200);
-
-                // Ужин (белки + овощи)
-                AddProductToCollection(DinnerItems, proteinProducts.Skip(2).FirstOrDefault(), 120);
-                AddProductToCollection(DinnerItems, veggieProducts.Skip(1).FirstOrDefault(p => p.Category == "Овощи"), 180);
-
-                UpdateMealSummaries();
-
-                _mainVM.UpdateStatus($"Автоплан сгенерирован для {SelectedClient.Username}");
-                MessageBox.Show($"Автоматический план сгенерирован!\n\n" +
-                              $"Завтрак: {BreakfastItems.Count} продуктов\n" +
-                              $"Обед: {LunchItems.Count} продуктов\n" +
-                              $"Ужин: {DinnerItems.Count} продуктов",
-                              "Автоплан", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Сначала добавьте продукты в план", "Информация",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
-            catch (Exception ex)
+
+            // Устанавливаем стандартные количества
+            foreach (var item in BreakfastItems)
             {
-                MessageBox.Show($"Ошибка генерации плана: {ex.Message}", "Ошибка",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                item.Quantity = GetAutoQuantity(item.ProductName, "Завтрак");
+                RecalculateItemNutrients(item);
+            }
+
+            foreach (var item in LunchItems)
+            {
+                item.Quantity = GetAutoQuantity(item.ProductName, "Обед");
+                RecalculateItemNutrients(item);
+            }
+
+            foreach (var item in DinnerItems)
+            {
+                item.Quantity = GetAutoQuantity(item.ProductName, "Ужин");
+                RecalculateItemNutrients(item);
+            }
+
+            UpdateMealSummaries();
+            _mainVM.UpdateStatus("Количества продуктов автоматически заполнены");
+        }
+
+        private decimal GetAutoQuantity(string productName, string mealType)
+        {
+            // Базовая логика для автоматического определения количества
+            if (productName.Contains("каша") || productName.Contains("гречка") || productName.Contains("рис"))
+                return mealType == "Завтрак" ? 150 : 120;
+
+            if (productName.Contains("кури") || productName.Contains("мясо") || productName.Contains("рыб"))
+                return 150;
+
+            if (productName.Contains("овощ") || productName.Contains("салат"))
+                return 200;
+
+            if (productName.Contains("фрукт") || productName.Contains("яблоко") || productName.Contains("банан"))
+                return 150;
+
+            return mealType == "Завтрак" ? 100 : 120;
+        }
+
+        private void RecalculateItemNutrients(MealPlanItem item)
+        {
+            var product = AllProducts.FirstOrDefault(p => p.ProductId == item.ProductId);
+            if (product != null)
+            {
+                var multiplier = item.Quantity / 100;
+                item.Calories = Math.Round(product.Calories * multiplier, 1);
+                item.Protein = Math.Round(product.Protein * multiplier, 1);
+                item.Fat = Math.Round(product.Fat * multiplier, 1);
+                item.Carbs = Math.Round(product.Carbohydrates * multiplier, 1);
             }
         }
 
-        private void AddProductToCollection(ObservableCollection<MealPlanItem> collection, ProductDto product, decimal quantity)
+        private void AddProductToCollection(ObservableCollection<MealPlanItem> collection, ProductDto product, decimal quantity, string notes)
         {
             if (product == null) return;
 
@@ -534,7 +590,8 @@ namespace NutriPlanner.ViewModels
                 Calories = Math.Round(product.Calories * multiplier, 1),
                 Protein = Math.Round(product.Protein * multiplier, 1),
                 Fat = Math.Round(product.Fat * multiplier, 1),
-                Carbs = Math.Round(product.Carbohydrates * multiplier, 1)
+                Carbs = Math.Round(product.Carbohydrates * multiplier, 1),
+                Notes = notes
             });
         }
 
@@ -543,13 +600,9 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private void UpdateMealSummaries()
         {
-            BreakfastSummary.UpdateFromItems(BreakfastItems);
-            LunchSummary.UpdateFromItems(LunchItems);
-            DinnerSummary.UpdateFromItems(DinnerItems);
-
-            OnPropertyChanged(nameof(BreakfastSummary));
-            OnPropertyChanged(nameof(LunchSummary));
-            OnPropertyChanged(nameof(DinnerSummary));
+            BreakfastSummary?.UpdateFromItems(BreakfastItems);
+            LunchSummary?.UpdateFromItems(LunchItems);
+            DinnerSummary?.UpdateFromItems(DinnerItems);
         }
 
         /// <summary>
@@ -557,13 +610,34 @@ namespace NutriPlanner.ViewModels
         /// </summary>
         private ObservableCollection<MealPlanItem> GetSelectedMealCollection()
         {
-            return SelectedMealType switch
+            if (string.IsNullOrEmpty(SelectedMealType))
             {
-                "Завтрак" => BreakfastItems,
-                "Обед" => LunchItems,
-                "Ужин" => DinnerItems,
-                _ => null
-            };
+                // Если SelectedMealType пустой, возвращаем по CurrentMealTab
+                switch (CurrentMealTab)
+                {
+                    case "Завтрак":
+                        return BreakfastItems;
+                    case "Обед":
+                        return LunchItems;
+                    case "Ужин":
+                        return DinnerItems;
+                    default:
+                        return BreakfastItems;
+                }
+            }
+
+            switch (SelectedMealType)
+            {
+                case "Завтрак":
+                    return BreakfastItems;
+                case "Обед":
+                    return LunchItems;
+                case "Ужин":
+                    return DinnerItems;
+                default:
+                    // Если значение неправильное, используем вкладку по умолчанию
+                    return BreakfastItems;
+            }
         }
 
         /// <summary>
@@ -609,44 +683,46 @@ namespace NutriPlanner.ViewModels
                     if (result != MessageBoxResult.Yes) return;
                 }
 
-                // Создаем план питания
-                var plan = new NutritionPlan
+                using (var context = new DatabaseContext())
                 {
-                    UserId = SelectedClient.UserId,
-                    PlanName = PlanName,
-                    StartDate = StartDate,
-                    EndDate = EndDate,
-                    DailyCalories = TargetCalories,
-                    DailyProtein = TargetProtein,
-                    DailyFat = TargetFat,
-                    DailyCarbohydrates = TargetCarbs,
-                    Status = Status
-                };
+                    // Создаем план питания
+                    var plan = new NutritionPlan
+                    {
+                        UserId = SelectedClient.UserId,
+                        PlanName = PlanName,
+                        StartDate = StartDate,
+                        EndDate = EndDate,
+                        DailyCalories = TargetCalories,
+                        DailyProtein = TargetProtein,
+                        DailyFat = TargetFat,
+                        DailyCarbohydrates = TargetCarbs,
+                        Status = "Новый", // Всегда создаем с статусом "Новый"
+                        Description = Description,
+                        CreatedDate = DateTime.Now
+                    };
 
-                _context.NutritionPlans.Add(plan);
-                await _context.SaveChangesAsync();
+                    context.NutritionPlans.Add(plan);
+                    await context.SaveChangesAsync();
 
-                // Сохраняем продукты плана (в реальном приложении нужно создать таблицу MealPlanProducts)
-                // Здесь просто сохраняем информацию о продуктах в описании
-                string planDescription = GeneratePlanDescription();
-                plan.DailyCalories = TargetCalories; // Просто обновляем
+                    // Сохраняем продукты плана
+                    await SavePlanProducts(context, plan.PlanId);
 
-                await _context.SaveChangesAsync();
+                    _mainVM.UpdateStatus($"Создан план '{PlanName}' для клиента {SelectedClient.Username}");
 
-                _mainVM.UpdateStatus($"Создан план '{PlanName}' для клиента {SelectedClient.Username}");
-                MessageBox.Show($"План питания успешно создан!\n\n" +
-                              $"Клиент: {SelectedClient.Username}\n" +
-                              $"Название: {PlanName}\n" +
-                              $"Период: {StartDate:dd.MM.yyyy} - {EndDate:dd.MM.yyyy}\n" +
-                              $"Калории: {TargetCalories} ккал/день\n" +
-                              $"Статус: {Status}\n\n" +
-                              $"Завтрак: {BreakfastItems.Count} продуктов\n" +
-                              $"Обед: {LunchItems.Count} продуктов\n" +
-                              $"Ужин: {DinnerItems.Count} продуктов",
-                              "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"План питания успешно создан!\n\n" +
+                                  $"Клиент: {SelectedClient.Username}\n" +
+                                  $"Название: {PlanName}\n" +
+                                  $"Период: {StartDate:dd.MM.yyyy} - {EndDate:dd.MM.yyyy}\n" +
+                                  $"Калории: {TargetCalories} ккал/день\n" +
+                                  $"Статус: НОВЫЙ (требуется отправить клиенту)\n\n" +
+                                  $"Завтрак: {BreakfastItems.Count} продуктов\n" +
+                                  $"Обед: {LunchItems.Count} продуктов\n" +
+                                  $"Ужин: {DinnerItems.Count} продуктов",
+                                  "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
 
-                // Очищаем форму
-                ClearForm();
+                    // Очищаем форму
+                    ClearForm();
+                }
             }
             catch (Exception ex)
             {
@@ -657,43 +733,102 @@ namespace NutriPlanner.ViewModels
         }
 
         /// <summary>
-        /// Генерирует описание плана с продуктами
+        /// Сохраняет продукты плана в базу данных
         /// </summary>
-        private string GeneratePlanDescription()
+        private async Task SavePlanProducts(DatabaseContext context, int planId)
         {
-            var description = $"План питания '{PlanName}'\n\n";
-
-            if (BreakfastItems.Any())
+            // Сохраняем продукты завтрака
+            foreach (var item in BreakfastItems)
             {
-                description += "ЗАВТРАК:\n";
-                foreach (var item in BreakfastItems)
+                var planProduct = new PlanProduct
                 {
-                    description += $"- {item.ProductName}: {item.Quantity}г ({item.Calories} ккал)\n";
-                }
-                description += $"Итого: {BreakfastSummary.TotalCalories} ккал\n\n";
+                    PlanId = planId,
+                    ProductId = item.ProductId,
+                    MealType = "Завтрак",
+                    Quantity = item.Quantity,
+                    Notes = item.Notes
+                };
+                context.PlanProducts.Add(planProduct);
             }
 
-            if (LunchItems.Any())
+            // Сохраняем продукты обеда
+            foreach (var item in LunchItems)
             {
-                description += "ОБЕД:\n";
-                foreach (var item in LunchItems)
+                var planProduct = new PlanProduct
                 {
-                    description += $"- {item.ProductName}: {item.Quantity}г ({item.Calories} ккал)\n";
-                }
-                description += $"Итого: {LunchSummary.TotalCalories} ккал\n\n";
+                    PlanId = planId,
+                    ProductId = item.ProductId,
+                    MealType = "Обед",
+                    Quantity = item.Quantity,
+                    Notes = item.Notes
+                };
+                context.PlanProducts.Add(planProduct);
             }
 
-            if (DinnerItems.Any())
+            // Сохраняем продукты ужина
+            foreach (var item in DinnerItems)
             {
-                description += "УЖИН:\n";
-                foreach (var item in DinnerItems)
+                var planProduct = new PlanProduct
                 {
-                    description += $"- {item.ProductName}: {item.Quantity}г ({item.Calories} ккал)\n";
-                }
-                description += $"Итого: {DinnerSummary.TotalCalories} ккал\n";
+                    PlanId = planId,
+                    ProductId = item.ProductId,
+                    MealType = "Ужин",
+                    Quantity = item.Quantity,
+                    Notes = item.Notes
+                };
+                context.PlanProducts.Add(planProduct);
             }
 
-            return description;
+            await context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Отправляет план клиенту (меняет статус на "Отправлен")
+        /// </summary>
+        private async void SendPlanToClient()
+        {
+            try
+            {
+                var result = MessageBox.Show(
+                    $"Отправить план '{PlanName}' клиенту {SelectedClient.Username}?\n\n" +
+                    "Клиент получит уведомление о новом плане питания.",
+                    "Отправка плана клиенту",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    using (var context = new DatabaseContext())
+                    {
+                        // Находим последний созданный план для этого клиента с таким же названием
+                        var lastPlan = await context.NutritionPlans
+                            .Where(p => p.UserId == SelectedClient.UserId)
+                            .OrderByDescending(p => p.CreatedDate)
+                            .FirstOrDefaultAsync();
+
+                        if (lastPlan != null)
+                        {
+                            lastPlan.Status = "Отправлен";
+                            await context.SaveChangesAsync();
+
+                            _mainVM.UpdateStatus($"План '{lastPlan.PlanName}' отправлен клиенту {SelectedClient.Username}");
+                            MessageBox.Show($"План успешно отправлен клиенту!\n\n" +
+                                          "Клиент увидит план в своем разделе 'Мои планы питания'.",
+                                          "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Сначала создайте план, затем отправьте его клиенту.",
+                                "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка отправки плана: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         /// <summary>
@@ -704,10 +839,12 @@ namespace NutriPlanner.ViewModels
             PlanName = "Новый план питания";
             StartDate = DateTime.Today;
             EndDate = DateTime.Today.AddDays(7);
-            Status = "Активен";
+            Status = "Новый";
+            Description = "";
             BreakfastItems.Clear();
             LunchItems.Clear();
             DinnerItems.Clear();
+            MealNotes = "";
             UpdateMealSummaries();
 
             if (SelectedClient != null)
@@ -720,15 +857,64 @@ namespace NutriPlanner.ViewModels
     /// <summary>
     /// Класс для элемента плана питания
     /// </summary>
-    public class MealPlanItem
+    public class MealPlanItem : BaseViewModel
     {
-        public int ProductId { get; set; }
-        public string ProductName { get; set; } = string.Empty;
-        public decimal Quantity { get; set; }
-        public decimal Calories { get; set; }
-        public decimal Protein { get; set; }
-        public decimal Fat { get; set; }
-        public decimal Carbs { get; set; }
+        private int _productId;
+        private string _productName = string.Empty;
+        private decimal _quantity;
+        private decimal _calories;
+        private decimal _protein;
+        private decimal _fat;
+        private decimal _carbs;
+        private string _notes = string.Empty;
+
+        public int ProductId
+        {
+            get => _productId;
+            set { _productId = value; OnPropertyChanged(); }
+        }
+
+        public string ProductName
+        {
+            get => _productName;
+            set { _productName = value; OnPropertyChanged(); }
+        }
+
+        public decimal Quantity
+        {
+            get => _quantity;
+            set { _quantity = value; OnPropertyChanged(); }
+        }
+
+        public decimal Calories
+        {
+            get => _calories;
+            set { _calories = value; OnPropertyChanged(); }
+        }
+
+        public decimal Protein
+        {
+            get => _protein;
+            set { _protein = value; OnPropertyChanged(); }
+        }
+
+        public decimal Fat
+        {
+            get => _fat;
+            set { _fat = value; OnPropertyChanged(); }
+        }
+
+        public decimal Carbs
+        {
+            get => _carbs;
+            set { _carbs = value; OnPropertyChanged(); }
+        }
+
+        public string Notes
+        {
+            get => _notes;
+            set { _notes = value; OnPropertyChanged(); }
+        }
     }
 
     /// <summary>
@@ -736,23 +922,50 @@ namespace NutriPlanner.ViewModels
     /// </summary>
     public class MealSummary : BaseViewModel
     {
-        public string MealType { get; set; } = string.Empty;
-        public decimal TotalCalories { get; set; }
-        public decimal TotalProtein { get; set; }
-        public decimal TotalFat { get; set; }
-        public decimal TotalCarbs { get; set; }
+        private string _mealType = string.Empty;
+        private decimal _totalCalories;
+        private decimal _totalProtein;
+        private decimal _totalFat;
+        private decimal _totalCarbs;
+
+        public string MealType
+        {
+            get => _mealType;
+            set { _mealType = value; OnPropertyChanged(); }
+        }
+
+        public decimal TotalCalories
+        {
+            get => _totalCalories;
+            set { _totalCalories = value; OnPropertyChanged(); }
+        }
+
+        public decimal TotalProtein
+        {
+            get => _totalProtein;
+            set { _totalProtein = value; OnPropertyChanged(); }
+        }
+
+        public decimal TotalFat
+        {
+            get => _totalFat;
+            set { _totalFat = value; OnPropertyChanged(); }
+        }
+
+        public decimal TotalCarbs
+        {
+            get => _totalCarbs;
+            set { _totalCarbs = value; OnPropertyChanged(); }
+        }
 
         public void UpdateFromItems(ObservableCollection<MealPlanItem> items)
         {
+            if (items == null) return;
+
             TotalCalories = items.Sum(i => i.Calories);
             TotalProtein = items.Sum(i => i.Protein);
             TotalFat = items.Sum(i => i.Fat);
             TotalCarbs = items.Sum(i => i.Carbs);
-
-            OnPropertyChanged(nameof(TotalCalories));
-            OnPropertyChanged(nameof(TotalProtein));
-            OnPropertyChanged(nameof(TotalFat));
-            OnPropertyChanged(nameof(TotalCarbs));
         }
     }
 }

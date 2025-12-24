@@ -20,7 +20,25 @@
             <PasswordBox x:Name="PasswordBox" PasswordChanged="PasswordBox_OnPasswordChanged" Margin="0 0 0 10"/>
         </StackPanel>
 
-        <Button Content="Войти" Command="{Binding LoginCommand}" Grid.Row="2" Margin="0 0 0 10"/>
-        <Button Content="Регистрация" Command="{Binding OpenRegisterCommand}" Grid.Row="3"/>
+        <StackPanel Grid.Row="2">
+            <Button Content="Войти" 
+                    Command="{Binding LoginCommand}" 
+                    Height="30"
+                    Width="100"
+                    Background="#4CAF50"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    Margin="0 0 0 10"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" VerticalAlignment="Center">
+            <Button Content="Регистрация" 
+                    Command="{Binding OpenRegisterCommand}"
+                    Height="30"
+                    Width="100"
+                    Background="#2196F3"
+                    Foreground="White"
+                    FontWeight="Bold"/>
+        </StackPanel>
     </Grid>
 </Window>

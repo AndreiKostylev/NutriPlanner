@@ -43,7 +43,7 @@
             </Setter>
         </Style>
 
-
+        <!-- DataTemplates для ViewModels -->
         <DataTemplate DataType="{x:Type vm:DailyNutritionViewModel}">
             <views:DailyNutritionView />
         </DataTemplate>
@@ -64,10 +64,13 @@
             <views:ClientManagementView />
         </DataTemplate>
 
-    
-
         <DataTemplate DataType="{x:Type vm:UserPlanViewViewModel}">
             <views:UserPlanViewView />
+        </DataTemplate>
+
+        <!-- НОВОЕ: DataTemplate для админ-панели -->
+        <DataTemplate DataType="{x:Type vm:AdminPanelViewModel}">
+            <views:AdminPanelView />
         </DataTemplate>
 
     </Window.Resources>
@@ -84,7 +87,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-
+        <!-- Верхняя панель -->
         <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#2D3E50" Padding="10">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="NUTRIPLANNER" 
@@ -110,54 +113,44 @@
             </StackPanel>
         </Border>
 
-
+        <!-- Боковое меню -->
         <Border Grid.Row="1" Grid.Column="0" Background="#F5F5F5">
             <ScrollViewer>
                 <StackPanel Margin="10" VerticalAlignment="Top">
 
-
+                    <!-- Основное (только для обычных пользователей) -->
                     <TextBlock Text="Основное" 
                                Foreground="#666666"
                                FontWeight="Bold"
-                               Margin="0,0,0,5"/>
+                               Margin="0,0,0,5"
+                               Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     <Button Content="📝 Дневник питания"
                             Margin="0,2"
                             Padding="10,8"
                             Command="{Binding ShowDailyNutritionCommand}" 
                             Style="{StaticResource MenuButtonStyle}"
-                            ToolTip="Ведение дневника питания"/>
+                            ToolTip="Ведение дневника питания"
+                            Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     <Button Content="📋 Мои планы питания"
                             Margin="0,2"
                             Padding="10,8"
                             Command="{Binding ShowUserPlanViewCommand}"
                             Style="{StaticResource MenuButtonStyle}"
-                            ToolTip="Просмотр моих планов питания"/>
+                            ToolTip="Просмотр моих планов питания"
+                            Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     <Button Content="🥦 Продукты"
                             Margin="0,2"
                             Padding="10,8"
                             Command="{Binding ShowProductsCommand}"
                             Style="{StaticResource MenuButtonStyle}"
-                            ToolTip="Управление базой продуктов"/>
+                            ToolTip="Управление базой продуктов"
+                            Visibility="{Binding IsUser, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                    <Button Content="👤 Профиль"
-                            Margin="0,2"
-                            Padding="10,8"
-                            Command="{Binding ShowProfileCommand}"
-                            Style="{StaticResource MenuButtonStyle}"
-                            ToolTip="Информация о профиле пользователя"/>
-
-                    <Button Content="ℹ️ О программе"
-                            Margin="0,2"
-                            Padding="10,8"
-                            Command="{Binding ShowAboutCommand}"
-                            Style="{StaticResource MenuButtonStyle}"
-                            ToolTip="Информация о программе и курсовой работе"/>
-
-
-                    <TextBlock Text="Для диетологов" 
+                    <!-- Для диетологов и админов -->
+                    <TextBlock Text="Диетолог" 
                                Foreground="#666666"
                                FontWeight="Bold"
                                Margin="0,20,0,5"
@@ -179,8 +172,6 @@
                             Style="{StaticResource MenuButtonStyle}"
                             ToolTip="Управление клиентами и их планами"/>
 
-       
-
                     <Button Content="📅 Создание планов"
                             Margin="0,2"
                             Padding="10,8"
@@ -189,17 +180,47 @@
                             Style="{StaticResource MenuButtonStyle}"
                             ToolTip="Создание планов питания для клиентов"/>
 
+                    <!-- НОВОЕ: Для админов -->
+                    <TextBlock Text="Администрирование" 
+                               Foreground="#666666"
+                               FontWeight="Bold"
+                               Margin="0,20,0,5"
+                               Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <Button Content="⚙️ Панель администратора"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowAdminPanelCommand}"
+                            Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            Style="{StaticResource MenuButtonStyle}"
+                            ToolTip="Управление системой и пользователями"
+                            Background="#E3F2FD"
+                            BorderBrush="#1976D2"/>
+
+                    <!-- Кнопка "О программе" для всех пользователей -->
+                    <TextBlock Text="Система" 
+                               Foreground="#666666"
+                               FontWeight="Bold"
+                               Margin="0,20,0,5"/>
+
+                    <Button Content="ℹ️ О программе"
+                            Margin="0,2"
+                            Padding="10,8"
+                            Command="{Binding ShowAboutCommand}"
+                            Style="{StaticResource MenuButtonStyle}"
+                            ToolTip="Информация о программе и курсовой работе"/>
+
                 </StackPanel>
             </ScrollViewer>
         </Border>
 
-
+        <!-- Основная область контента -->
         <Border Grid.Row="1" Grid.Column="1"
                 Background="White" Padding="15">
             <ContentControl Content="{Binding CurrentView}" />
         </Border>
 
-
+        <!-- Статус бар -->
         <Border Grid.Row="2" Grid.ColumnSpan="2"
                 Background="#ECECEC" Padding="8">
             <TextBlock Text="{Binding StatusMessage}" 

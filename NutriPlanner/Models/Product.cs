@@ -27,5 +27,8 @@ namespace NutriPlanner.Models
         public virtual ICollection<DishProduct> DishProducts { get; set; } = new List<DishProduct>();
 
         public virtual ICollection<FoodDiary> FoodDiaries { get; set; } = new List<FoodDiary>();
+
+        // Новое свойство для связи с планами питания
+        public virtual ICollection<PlanProduct> PlanProducts { get; set; } = new List<PlanProduct>();
     }
 }

@@ -16,10 +16,11 @@ public class DatabaseContext : DbContext
     public DbSet<FoodDiary> FoodDiaries { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<DishProduct> DishProducts { get; set; }
+    public DbSet<PlanProduct> PlanProducts { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlServer(@"Server=DESKTOP-FRH9KJ6\SQLEXPRESS;Database=NutriPlaner;Trusted_Connection=true;TrustServerCertificate=true;");
+        optionsBuilder.UseSqlServer(@"Server=DESKTOP-FRH9KJ6\SQLEXPRESS;Database=NutrPlaner;Trusted_Connection=true;TrustServerCertificate=true;");
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -112,7 +113,26 @@ public class DatabaseContext : DbContext
                   .HasForeignKey(dp => dp.ProductId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
+        modelBuilder.Entity<PlanProduct>(entity =>
+        {
+            entity.HasKey(pp => pp.PlanProductId);
 
+            entity.HasOne(pp => pp.NutritionPlan)
+                  .WithMany(np => np.PlanProducts)
+                  .HasForeignKey(pp => pp.PlanId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(pp => pp.Product)
+                  .WithMany(p => p.PlanProducts)
+                  .HasForeignKey(pp => pp.ProductId)
+                  .OnDelete(DeleteBehavior.NoAction);
+
+            entity.Property(pp => pp.MealType)
+                  .HasMaxLength(50);
+
+            entity.Property(pp => pp.Notes)
+                  .HasMaxLength(500);
+        });
 
         SeedData(modelBuilder);
     }

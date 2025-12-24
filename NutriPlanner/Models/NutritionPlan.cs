@@ -28,7 +28,13 @@ namespace NutriPlanner.Models
 
         public string Status { get; set; } = null!;
 
+        public string? Description { get; set; }
+
+        public DateTime? CreatedDate { get; set; } = DateTime.Now;
+
         public virtual User User { get; set; } = null!;
+
+        public virtual ICollection<PlanProduct> PlanProducts { get; set; } = new List<PlanProduct>();
     }
 
 }
