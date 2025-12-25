@@ -1,12 +1,40 @@
 ﻿<Window x:Class="NutriPlanner.AboutWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:NutriPlanner"
-        mc:Ignorable="d"
-        Title="AboutWindow" Height="450" Width="800">
-    <Grid>
-        
-    </Grid>
+        Title="О программе NutriPlanner" 
+        Height="300" Width="400"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <StackPanel Margin="20">
+        <TextBlock Text="NutriPlanner" 
+                   FontSize="24" 
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,10"/>
+
+
+        <TextBlock Text="Система планирования питания&#x0a;с учетом индивидуальных потребностей"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   FontSize="12"
+                   Margin="0,0,0,20"/>
+
+        <TextBlock Text="Разработчик: Костылев Андрей"
+                   FontSize="11"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,10"/>
+
+        <TextBlock Text="Группа: 4пк2"
+                   FontSize="11"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,10"/>
+
+        <TextBlock Text="2025"
+                   FontSize="11"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,20"/>
+
+      
+    </StackPanel>
 </Window>
